@@ -28,8 +28,11 @@ def get_day_rollup(session: Session, date_str: str) -> Dict[str, Any]:
             daily_intents = p.get("intents", [])
             break
             
-    # 2. Reconstruct Blocks
-    block_types = ["intent_block_started", "intent_block_interrupted", "intent_block_ended"]
+    # 2. Reconstruct Blocks (Work & Recovery)
+    block_types = [
+        "intent_block_started", "intent_block_interrupted", "intent_block_ended",
+        "recovery_block_started", "recovery_block_ended"
+    ]
     events = session.exec(
         select(EventLog)
         .where(EventLog.type.in_(block_types))
@@ -37,6 +40,7 @@ def get_day_rollup(session: Session, date_str: str) -> Dict[str, Any]:
     ).all()
     
     blocks_map = {}
+    recovery_map = {}
     for evt in events:
         p = _parse_payload(evt)
         block_id = p.get("blockId")
@@ -56,6 +60,16 @@ def get_day_rollup(session: Session, date_str: str) -> Dict[str, Any]:
                     "durationMinutes": None,
                     "durationLabel": "" # Guaranteed string
                 }
+        
+        if evt.type == "recovery_block_started":
+            if p.get("date") == date_str:
+                recovery_map[block_id] = {
+                    "blockId": block_id,
+                    "kind": p.get("kind"),
+                    "date": p.get("date"),
+                    "durationMinutes": None,
+                    "durationLabel": ""
+                }
         elif block_id in blocks_map:
             if evt.type == "intent_block_interrupted":
                 blocks_map[block_id]["interrupted"] = True
@@ -66,6 +80,11 @@ def get_day_rollup(session: Session, date_str: str) -> Dict[str, Any]:
                 blocks_map[block_id]["durationMinutes"] = dur
                 # Ensure label
                 blocks_map[block_id]["durationLabel"] = bucket_minutes_to_label(dur) or ""
+        elif block_id in recovery_map:
+            if evt.type == "recovery_block_ended":
+                dur = p.get("durationMinutes")
+                recovery_map[block_id]["durationMinutes"] = dur
+                recovery_map[block_id]["durationLabel"] = bucket_minutes_to_label(dur) or ""
 
     blocks_list = list(blocks_map.values())
     
@@ -77,6 +96,11 @@ def get_day_rollup(session: Session, date_str: str) -> Dict[str, Any]:
     total_active_minutes = sum((b["durationMinutes"] or 0) for b in blocks_list)
     total_active_label = bucket_total_day(total_active_minutes)
     
+    recovery_list = list(recovery_map.values())
+    total_recovery_minutes = sum((b["durationMinutes"] or 0) for b in recovery_list)
+    total_recovery_label = bucket_total_day(total_recovery_minutes) if total_recovery_minutes > 0 else "~0 mins"
+
+    
     fragmentation_rate = 0.0
     if total_blocks > 0:
         fragmentation_rate = interrupted_blocks / total_blocks
@@ -85,13 +109,16 @@ def get_day_rollup(session: Session, date_str: str) -> Dict[str, Any]:
         "date": date_str,
         "intents": daily_intents,
         "blocks": blocks_list,
+        "recoveryBlocks": recovery_list,
         "metrics": {
             "totalBlocks": total_blocks,
             "interruptedBlocks": interrupted_blocks,
             "fragmentationRate": round(fragmentation_rate, 2),
             "focusBlocks": focus_blocks,
             "totalActiveMinutes": total_active_minutes,
-            "totalActiveLabel": total_active_label
+            "totalActiveLabel": total_active_label,
+            "totalRecoveryMinutes": total_recovery_minutes,
+            "totalRecoveryLabel": total_recovery_label
         }
     }
 
@@ -124,7 +151,10 @@ def get_week_rollup(session: Session, year_week: str) -> Dict[str, Any]:
     start_date = datetime.strptime(f'{year}-W{week}-1', "%Y-W%W-%w")
     end_date = start_date + timedelta(days=7)
 
-    block_types = ["intent_block_started", "intent_block_interrupted", "intent_block_ended"]
+    block_types = [
+        "intent_block_started", "intent_block_interrupted", "intent_block_ended",
+        "recovery_block_ended"
+    ]
     events = session.exec(
         select(EventLog)
         .where(EventLog.type.in_(block_types))
@@ -133,11 +163,17 @@ def get_week_rollup(session: Session, year_week: str) -> Dict[str, Any]:
     ).all()
 
     blocks_map = {}
+    recovery_minutes = 0.0
     fragmenter_counts = {}
     
     for evt in events:
         p = _parse_payload(evt)
         block_id = p.get("blockId")
+        
+        if evt.type == "recovery_block_ended":
+            recovery_minutes += (p.get("durationMinutes") or 0)
+            continue
+            
         if not block_id: continue
         
         if evt.type == "intent_block_started":
@@ -164,6 +200,7 @@ def get_week_rollup(session: Session, year_week: str) -> Dict[str, Any]:
     focus_blocks = sum(1 for b in blocks_list if not b["interrupted"] and b["durationMinutes"] >= 30)
     total_active_minutes = sum(b["durationMinutes"] for b in blocks_list)
     total_active_label = bucket_total_day(total_active_minutes)
+    total_recovery_label = bucket_total_day(int(recovery_minutes)) if recovery_minutes > 0 else "~0 mins"
     
     frag_rate = 0.0
     if total_blocks > 0:
@@ -200,7 +237,9 @@ def get_week_rollup(session: Session, year_week: str) -> Dict[str, Any]:
             "focusBlocks": focus_blocks,
             "topFragmenters": top_fragmenters,
             "totalActiveMinutes": total_active_minutes,
-            "totalActiveLabel": total_active_label
+            "totalActiveLabel": total_active_label,
+            "totalRecoveryMinutes": int(recovery_minutes),
+            "totalRecoveryLabel": total_recovery_label
         },
         "reflection": reflection
     }
