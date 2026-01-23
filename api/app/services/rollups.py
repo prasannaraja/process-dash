@@ -103,7 +103,6 @@ def get_week_rollup(session: Session, year_week: str) -> Dict[str, Any]:
         year = int(y)
         week = int(w)
     except:
-    except:
         return {
             "yearWeek": year_week,
             "metrics": {
