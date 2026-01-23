@@ -27,3 +27,10 @@ Interrupted Blocks / Total Blocks
 Efficiency = Focused Intent Time / Available Cognitive Time
 
 This system does NOT measure hours worked or busyness.
+
+## Recovery Time
+
+Intentional non-work pauses (Coffee, Lunch).
+
+- **Excluded** from "Active Work" / "Focus Blocks".
+- **Reported** separately with bucketed labels.

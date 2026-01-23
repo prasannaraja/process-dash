@@ -6,6 +6,7 @@
 
 - Edit today's intents (max 5)
 - **Start Block**:
+  - Options: [Work Block] [Coffee] [Lunch]
   - Show "Started at: HH:mm"
 - **Finish Block**:
   - Show suggested duration (calculated from start time)

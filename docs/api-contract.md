@@ -71,9 +71,32 @@ Returns stored daily intents.
 Returns a derived rollup for the given day.
 
 - **Includes** computed `durationLabel` (e.g., "~1 hour") for each block.
-- **Includes** new metric: `totalActiveLabel` (e.g., "~½ day").
+- **Includes** metric: `totalActiveLabel` (e.g., "~½ day").
+- **Includes** metric: `totalRecoveryLabel` (e.g. "~1 hour").
 
 Includes constant: `ACTIVE_WORKDAY_MINUTES = 360` for labeling.
+
+---
+
+## Recovery Blocks (Coffee / Lunch)
+
+### POST /api/recovery/start
+
+```json
+{
+  "kind": "COFFEE" | "LUNCH",
+  "date": "YYYY-MM-DD"
+}
+```
+
+### POST /api/recovery/end
+
+```json
+{
+  "blockId": "uuid",
+  "durationMinutes": 15
+}
+```
 
 ---
 

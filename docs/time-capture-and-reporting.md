@@ -8,6 +8,13 @@ This document defines **Option 2: Soft Timer Capture** with **Approximate Report
 - **Preserve user control**: The human is the final authority; timers are suggestions.
 - **Report time approximately**: Avoid false precision (e.g., "47 minutes") which invites micromanagement. Use broad buckets (e.g., "~1 hour") for external sharing and reflection.
 
+## H. Recovery Blocks (Coffee & Lunch)
+
+- **Purpose**: Normalize breaks as part of sustainable work.
+- **Behavior**: Tracked like work blocks (start/end) but labeled distinctively.
+- **Exclusion**: NOT counted in "Active Work" metrics.
+- **Reporting**: Shown in lists to explain gaps, but summarized separately.
+
 ## B. Two Time Concepts
 
 1. **Captured Time (Internal / Private)**
