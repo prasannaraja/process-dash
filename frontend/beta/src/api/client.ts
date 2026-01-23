@@ -38,6 +38,28 @@ export type WeeklySummaryRequest = {
     oneChangeNextWeek: string;
 };
 
+export type WeekMetrics = {
+    totalBlocks: number;
+    interruptedBlocks: number;
+    fragmentationRate: number;
+    focusBlocks: number;
+    topFragmenters: { code: string; count: number }[];
+    totalActiveMinutes: number;
+    totalActiveLabel: string;
+};
+
+export type WeekReflection = {
+    topFragmenters: string[];
+    notPerformanceIssues: string[];
+    oneChangeNextWeek: string;
+};
+
+export type WeekRollup = {
+    yearWeek: string;
+    metrics: WeekMetrics;
+    reflection: WeekReflection;
+};
+
 // --- Client ---
 
 async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
@@ -85,7 +107,7 @@ export const api = {
 
     reports: {
         getDay: (date: string) => fetchJson<DayRollup>(`/days/${date}`),
-        getWeek: (yearWeek: string) => fetchJson<any>(`/weeks/${yearWeek}`), // Typing loose for now
+        getWeek: (yearWeek: string) => fetchJson<WeekRollup>(`/weeks/${yearWeek}`),
         saveWeeklySummary: (yearWeek: string, data: WeeklySummaryRequest) =>
             fetchJson(`/weeks/${yearWeek}/summary`, {
                 method: "POST",

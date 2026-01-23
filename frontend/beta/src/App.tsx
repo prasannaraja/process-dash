@@ -3,6 +3,8 @@ import Today from "./pages/Today";
 import DayView from "./pages/DayView";
 import WeekView from "./pages/WeekView";
 
+import WeekendSummary from "./pages/WeekendSummary";
+
 function App() {
   return (
     <BrowserRouter>
@@ -12,6 +14,7 @@ function App() {
             <li><Link to="/" className="font-bold hover:text-blue-600">Today</Link></li>
             <li><Link to="/day" className="hover:text-blue-600">Day Report</Link></li>
             <li><Link to="/week" className="hover:text-blue-600">Week Report</Link></li>
+            <li><Link to="/weekend" className="hover:text-blue-600 text-gray-400">Weekend</Link></li>
           </ul>
         </nav>
 
@@ -19,6 +22,7 @@ function App() {
           <Route path="/" element={<Today />} />
           <Route path="/day" element={<DayView />} />
           <Route path="/week" element={<WeekView />} />
+          <Route path="/weekend" element={<WeekendSummary />} />
         </Routes>
       </div>
     </BrowserRouter>
