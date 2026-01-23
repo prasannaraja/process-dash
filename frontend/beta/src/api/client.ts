@@ -135,6 +135,10 @@ export const api = {
     },
 
     export: {
-        day: (date: string) => fetchJson<{ path: string }>(`/export/day/${date}`, { method: "POST" }),
+        day: async (date: string) => {
+            const res = await fetch(`${BASE_URL}/export/day/${date}`, { method: "POST" });
+            if (!res.ok) throw new Error("Export failed");
+            return res.blob();
+        }
     }
 };

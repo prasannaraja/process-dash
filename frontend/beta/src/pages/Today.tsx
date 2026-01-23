@@ -138,9 +138,26 @@ export default function Today() {
         refresh();
     };
 
+    const [exportSuccess, setExportSuccess] = useState(false);
+
     const handleExport = async () => {
-        const res = await api.export.day(date);
-        alert(`Exported to: ${res.path}`);
+        try {
+            const blob = await api.export.day(date);
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `daily-${date}.md`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+
+            setExportSuccess(true);
+            setTimeout(() => setExportSuccess(false), 3000);
+        } catch (e) {
+            console.error(e);
+            alert("Export failed");
+        }
     };
 
     if (!data) return <div>Loading...</div>;
@@ -149,7 +166,14 @@ export default function Today() {
         <div className="p-4 max-w-2xl mx-auto space-y-8">
             <header className="flex justify-between items-center">
                 <h1 className="text-2xl font-bold">Today: {date}</h1>
-                <button onClick={handleExport} className="text-sm underline">Export MD</button>
+                <div className="flex items-center gap-3">
+                    {exportSuccess && (
+                        <span className="text-xs text-green-600 font-medium animate-pulse">
+                            Exported!
+                        </span>
+                    )}
+                    <button onClick={handleExport} className="text-sm underline text-gray-600 hover:text-black">Export MD</button>
+                </div>
             </header>
 
             {/* Intents Section */}
