@@ -32,9 +32,9 @@ export default function WeekView() {
             const res = await api.reports.getWeek(yearWeek);
             setData(res);
             // Hydrate forms
-            setNotPerfIssues(res.reflection.notPerformanceIssues.join("\n"));
-            setOneChange(res.reflection.oneChangeNextWeek);
-            setSelectedFrag(res.reflection.topFragmenters);
+            setNotPerfIssues((res.reflection?.notPerformanceIssues || []).join("\n"));
+            setOneChange(res.reflection?.oneChangeNextWeek || "");
+            setSelectedFrag(res.reflection?.topFragmenters || []);
         } catch (e: any) {
             setError(e.message);
         } finally {
@@ -100,20 +100,20 @@ export default function WeekView() {
                 <>
                     {/* Metrics Grid */}
                     <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <MetricCard label="Active Work" value={data.metrics.totalActiveLabel || "-"} />
-                        <MetricCard label="Total Blocks" value={data.metrics.totalBlocks} />
+                        <MetricCard label="Active Work" value={data?.metrics?.totalActiveLabel || "-"} />
+                        <MetricCard label="Total Blocks" value={data?.metrics?.totalBlocks || 0} />
                         <MetricCard
                             label="Interrupted"
-                            value={data.metrics.interruptedBlocks}
-                            sub={`${Math.round(data.metrics.fragmentationRate * 100)}% Rate`}
+                            value={data?.metrics?.interruptedBlocks || 0}
+                            sub={`${Math.round((data?.metrics?.fragmentationRate || 0) * 100)}% Rate`}
                         />
-                        <MetricCard label="Focus Blocks" value={data.metrics.focusBlocks} />
+                        <MetricCard label="Focus Blocks" value={data?.metrics?.focusBlocks || 0} />
                     </section>
 
                     {/* Fragmenters Table */}
                     <section className="space-y-4">
                         <h3 className="font-bold text-lg">Top Sources of Fragmentation</h3>
-                        {data.metrics.topFragmenters.length === 0 ? (
+                        {(!data?.metrics?.topFragmenters || data.metrics.topFragmenters.length === 0) ? (
                             <p className="text-gray-500 italic">No interruptions recorded this week.</p>
                         ) : (
                             <div className="border rounded overflow-hidden">
@@ -156,8 +156,8 @@ export default function WeekView() {
                                             }
                                         }}
                                         className={`px-3 py-1 rounded text-sm border ${selectedFrag.includes(f.code)
-                                                ? "bg-red-100 border-red-300 text-red-800"
-                                                : "bg-white border-gray-300 text-gray-600 hover:border-gray-400"
+                                            ? "bg-red-100 border-red-300 text-red-800"
+                                            : "bg-white border-gray-300 text-gray-600 hover:border-gray-400"
                                             }`}
                                     >
                                         {f.code}
@@ -212,7 +212,7 @@ export default function WeekView() {
                 </>
             )}
 
-            {data && data.metrics.totalBlocks === 0 && !error && (
+            {data && (data.metrics?.totalBlocks || 0) === 0 && !error && (
                 <div className="text-center py-20 text-gray-400">
                     <h3 className="text-lg font-medium text-gray-500">No blocks recorded for this week.</h3>
                     <p>Go to "Today" to start tracking your work.</p>
