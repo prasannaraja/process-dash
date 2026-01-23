@@ -73,3 +73,8 @@ def test_day_rollup_lifecycle(client):
     assert metrics["interruptedBlocks"] == 1
     assert metrics["fragmentationRate"] == 1.0  # 1/1
     assert metrics["focusBlocks"] == 0 # Interrupted
+    
+    # Assert Time Buckets (Backend Guarantee)
+    assert metrics["totalActiveMinutes"] == 45
+    assert metrics["totalActiveLabel"] == "~1 hour"
+    assert data["blocks"][0]["durationLabel"] == "~1 hour"
