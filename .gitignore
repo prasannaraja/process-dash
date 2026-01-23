@@ -1,0 +1,30 @@
+# OS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Python (Backend)
+api/venv/
+api/.venv/
+api/__pycache__/
+api/*.pyc
+api/*.sqlite
+api/*.db
+api/.pytest_cache/
+api/htmlcov/
+api/.coverage
+
+# Node
+node_modules/
+dist/
+dist-ssr/
+*.local
+.npm/
+.vite/
+
+
+# General
+.env
