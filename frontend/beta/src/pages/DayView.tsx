@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { api, DayRollup } from "../api/client";
+import { api, type DayRollup } from "../api/client";
 
 export default function DayView() {
     const [date, setDate] = useState(() => new Date().toISOString().split("T")[0]);
@@ -33,6 +33,7 @@ export default function DayView() {
                     sub={`${Math.round(data.metrics.fragmentationRate * 100)}% Rate`}
                 />
                 <MetricCard label="Active Time" value={data.metrics.totalActiveLabel || "-"} />
+                <MetricCard label="Recovery" value={data.metrics.totalRecoveryLabel || "-"} />
             </div>
 
             {/* Table */}

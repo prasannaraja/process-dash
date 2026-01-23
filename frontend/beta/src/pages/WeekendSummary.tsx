@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { api, WeekRollup, DayRollup } from "../api/client";
+import { api, type WeekRollup, type DayRollup } from "../api/client";
 import { getCurrentWeek, getDatesInWeek } from "../utils/dateUtils";
 
 interface IntentSummary {
@@ -66,7 +66,6 @@ export default function WeekendSummary() {
 
     // 2. Focus Reality Check
     const focusDays = daysData.filter(d => d.metrics.focusBlocks > 0);
-    const totalDaysRecorded = daysData.filter(d => d.blocks.length > 0).length;
     // Longest block?
     let longestBlockMins = 0;
     daysData.forEach(d => d.blocks.forEach(b => {
@@ -120,7 +119,7 @@ export default function WeekendSummary() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <SummaryCard label="Active Work" value={weekData?.metrics?.totalActiveLabel || "~0 mins"} />
                     <SummaryCard label="Total Blocks" value={weekData?.metrics?.totalBlocks || 0} />
-                    <SummaryCard label="Focus Blocks" value={weekData?.metrics?.focusBlocks || 0} />
+                    <SummaryCard label="Recovery" value={weekData?.metrics?.totalRecoveryLabel || "~0 mins"} />
                     <SummaryCard label="Fragmentation" value={`${Math.round((weekData?.metrics?.fragmentationRate || 0) * 100)}%`} />
                 </div>
                 <p className="text-xs text-stone-400 italic text-center">This is an approximation of cognitive effort, not hours worked.</p>
@@ -139,6 +138,28 @@ export default function WeekendSummary() {
                                 </div>
                             </div>
                         ))}
+                </div>
+            </section>
+
+            {/* Recovery Reality */}
+            <section className="space-y-4">
+                <h2 className="text-xl font-bold text-stone-700">Recovery Reality</h2>
+                <div className="bg-amber-50 p-6 rounded-lg border border-amber-100 flex justify-between items-center text-amber-800">
+                    <div>
+                        <div className="text-2xl font-bold">{weekData?.metrics?.totalRecoveryLabel || "~0 mins"}</div>
+                        <div className="text-sm">spent on intentional breaks</div>
+                    </div>
+                    {(weekData?.metrics?.totalRecoveryMinutes || 0) > 0 ? (
+                        <div className="text-right">
+                            <div className="font-bold">Good Job.</div>
+                            <div className="text-xs opacity-75">Breaks protect long-term pace.</div>
+                        </div>
+                    ) : (
+                        <div className="text-right">
+                            <div className="font-bold">No breaks logged.</div>
+                            <div className="text-xs opacity-75">Consider tracking coffee/lunch to normalize rest.</div>
+                        </div>
+                    )}
                 </div>
             </section>
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { api, DayRollup } from "../api/client";
+import { api, type DayRollup } from "../api/client";
 
 // Bucket options for dropdown
 const DURATION_BUCKETS = [
@@ -23,6 +23,11 @@ export default function Today() {
     // Action State
     const [interruptReason, setInterruptReason] = useState("MEETING");
     const [endOutcome, setEndOutcome] = useState("");
+
+    // Recovery State
+    const [recoveryMode, setRecoveryMode] = useState(false);
+    const [recoveryKind, setRecoveryKind] = useState<"COFFEE" | "LUNCH" | null>(null);
+    const [currentRecoveryId, setCurrentRecoveryId] = useState<string | null>(null);
 
     // Soft Timer State
     const [startedAt, setStartedAt] = useState<Date | null>(null);
@@ -66,7 +71,7 @@ export default function Today() {
     // Update suggested timer UI when active
     useEffect(() => {
         let interval: any;
-        if (activeBlock && startedAt) {
+        if ((activeBlock || recoveryMode) && startedAt) {
             interval = setInterval(() => {
                 const diff = Math.round((new Date().getTime() - startedAt.getTime()) / 60000);
                 setSuggestedMinutes(Math.max(1, diff));
@@ -77,7 +82,7 @@ export default function Today() {
             setSuggestedMinutes(Math.max(1, diff));
         }
         return () => clearInterval(interval);
-    }, [activeBlock, startedAt]);
+    }, [activeBlock, recoveryMode, startedAt]);
 
     const handleInterrupt = async () => {
         if (!activeBlock) return;
@@ -100,6 +105,34 @@ export default function Today() {
         // Reset state
         setEndOutcome("");
         setExactDuration("");
+        setStartedAt(null);
+        setUseExact(false);
+        refresh();
+    };
+
+    const handleStartRecovery = async (kind: "COFFEE" | "LUNCH") => {
+        const res = await api.recovery.start(kind, date);
+        setRecoveryMode(true);
+        setRecoveryKind(kind);
+        setCurrentRecoveryId(res.blockId);
+        setStartedAt(new Date());
+    };
+
+    const handleEndRecovery = async () => {
+        if (!currentRecoveryId) return;
+
+        // Determine minutes
+        let finalMinutes = selectedDuration;
+        if (useExact && exactDuration) {
+            finalMinutes = parseInt(exactDuration);
+        }
+
+        await api.recovery.end(currentRecoveryId, finalMinutes);
+
+        // Reset
+        setRecoveryMode(false);
+        setRecoveryKind(null);
+        setCurrentRecoveryId(null);
         setStartedAt(null);
         setUseExact(false);
         refresh();
@@ -147,7 +180,7 @@ export default function Today() {
                 )}
             </section>
 
-            {/* Active Work Section */}
+            {/* Active Work / Recovery Section */}
             <section className="border-2 border-slate-200 p-6 rounded-lg">
                 {activeBlock ? (
                     <div className="space-y-4">
@@ -255,6 +288,74 @@ export default function Today() {
                             </div>
                         </div>
                     </div>
+                ) : recoveryMode ? (
+                    <div className="bg-amber-50 p-6 rounded border border-amber-200 space-y-4">
+                        <div className="flex justify-between items-start">
+                            <div>
+                                <h3 className="text-amber-800 font-bold uppercase text-xs tracking-wider">
+                                    Recovery In Progress
+                                </h3>
+                                <p className="text-2xl font-medium mt-1 text-amber-900">
+                                    {recoveryKind === "COFFEE" ? "☕ Coffee Break" : "🥗 Lunch Break"}
+                                </p>
+                            </div>
+                            {startedAt && (
+                                <div className="text-right">
+                                    <span className="text-sm text-amber-700">Started at {startedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                    <div className="text-2xl font-bold text-amber-800">~{suggestedMinutes}m</div>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="border-t border-amber-200 pt-4 space-y-3">
+                            <div className="space-y-1">
+                                <label className="text-xs font-semibold text-amber-800">Duration</label>
+                                <select
+                                    className="w-full border border-amber-300 p-1 bg-white rounded"
+                                    value={useExact ? "exact" : selectedDuration}
+                                    onChange={(e) => {
+                                        if (e.target.value === "exact") setUseExact(true);
+                                        else {
+                                            setUseExact(false);
+                                            setSelectedDuration(Number(e.target.value));
+                                        }
+                                    }}
+                                >
+                                    <option disabled>-- Select Approximate --</option>
+                                    {DURATION_BUCKETS.map(b => (
+                                        <option key={b.value} value={b.value}>{b.label}</option>
+                                    ))}
+                                    <option disabled>-- OR --</option>
+                                    <option value="exact">Exact / Use Suggested</option>
+                                </select>
+                            </div>
+
+                            {useExact && (
+                                <div className="flex gap-2">
+                                    <input
+                                        type="number"
+                                        placeholder="Mins"
+                                        className="w-full border p-1 rounded"
+                                        value={exactDuration}
+                                        onChange={(e) => setExactDuration(e.target.value)}
+                                    />
+                                    <button
+                                        className="text-xs underline text-amber-800 whitespace-nowrap"
+                                        onClick={() => setExactDuration(String(suggestedMinutes))}
+                                    >
+                                        Use {suggestedMinutes}m
+                                    </button>
+                                </div>
+                            )}
+
+                            <button
+                                onClick={handleEndRecovery}
+                                className="w-full bg-amber-600 text-white py-2 rounded font-medium hover:bg-amber-700"
+                            >
+                                Finish Break
+                            </button>
+                        </div>
+                    </div>
                 ) : (
                     <div className="space-y-4">
                         <h3 className="font-semibold">Start New Block</h3>
@@ -271,13 +372,27 @@ export default function Today() {
                                 value={newNotes}
                                 onChange={(e) => setNewNotes(e.target.value)}
                             />
-                            <button
-                                onClick={handleStartBlock}
-                                disabled={!newIntent}
-                                className="bg-slate-800 text-white px-6 py-2 rounded hover:bg-slate-700 disabled:opacity-50"
-                            >
-                                Start Focus
-                            </button>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={handleStartBlock}
+                                    disabled={!newIntent}
+                                    className="flex-1 bg-slate-800 text-white px-4 py-2 rounded hover:bg-slate-700 disabled:opacity-50 font-medium"
+                                >
+                                    Start Focus
+                                </button>
+                                <button
+                                    onClick={() => handleStartRecovery("COFFEE")}
+                                    className="bg-amber-100 text-amber-800 px-4 py-2 rounded hover:bg-amber-200 border border-amber-200"
+                                >
+                                    ☕ Coffee
+                                </button>
+                                <button
+                                    onClick={() => handleStartRecovery("LUNCH")}
+                                    className="bg-amber-100 text-amber-800 px-4 py-2 rounded hover:bg-amber-200 border border-amber-200"
+                                >
+                                    🥗 Lunch
+                                </button>
+                            </div>
                         </div>
                     </div>
                 )}
@@ -302,6 +417,12 @@ export default function Today() {
                         {data.metrics.totalActiveLabel || "-"}
                     </div>
                     <div className="text-xs text-gray-500 uppercase">Active Time</div>
+                </div>
+                <div className="bg-amber-50 p-2 rounded border border-amber-100">
+                    <div className="text-lg font-bold truncate px-1 text-amber-800">
+                        {data.metrics.totalRecoveryLabel || "-"}
+                    </div>
+                    <div className="text-xs text-amber-600 uppercase font-medium">Recovery</div>
                 </div>
             </section>
 
@@ -343,7 +464,23 @@ export default function Today() {
                                     </td>
                                 </tr>
                             ))}
-                            {data.blocks.length === 0 && (
+                            {(data as any).recoveryBlocks?.map((b: any) => (
+                                <tr key={b.blockId} className="border-b bg-amber-50/50">
+                                    <td className="p-2 font-medium text-amber-900">
+                                        {b.kind === "COFFEE" ? "☕ Coffee Break" : "🥗 Lunch Break"}
+                                    </td>
+                                    <td className="p-2 text-gray-500 italic">Recovery</td>
+                                    <td className="p-2 text-amber-800 font-medium">
+                                        {b.durationLabel || "-"}
+                                    </td>
+                                    <td className="p-2">
+                                        <span className="text-amber-700 bg-amber-100 px-2 py-0.5 rounded text-xs border border-amber-200">
+                                            Rest
+                                        </span>
+                                    </td>
+                                </tr>
+                            ))}
+                            {data.blocks.length === 0 && !(data as any).recoveryBlocks?.length && (
                                 <tr>
                                     <td colSpan={4} className="p-4 text-center text-gray-400">
                                         No blocks logged yet.

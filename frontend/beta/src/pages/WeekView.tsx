@@ -1,5 +1,5 @@
-import { useState, useEffect, KeyboardEvent } from "react";
-import { api, WeekRollup, WeeklySummaryRequest } from "../api/client";
+import { useState, useEffect, type KeyboardEvent } from "react";
+import { api, type WeekRollup, type WeeklySummaryRequest } from "../api/client";
 
 // Helper to get current ISO week YYYY-Www
 function getCurrentWeek() {
@@ -108,6 +108,7 @@ export default function WeekView() {
                             sub={`${Math.round((data?.metrics?.fragmentationRate || 0) * 100)}% Rate`}
                         />
                         <MetricCard label="Focus Blocks" value={data?.metrics?.focusBlocks || 0} />
+                        <MetricCard label="Recovery" value={data?.metrics?.totalRecoveryLabel || "-"} />
                     </section>
 
                     {/* Fragmenters Table */}

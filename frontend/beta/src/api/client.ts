@@ -23,6 +23,7 @@ export type DayMetrics = {
     fragmentationRate: number;
     focusBlocks: number;
     totalActiveLabel?: string;
+    totalRecoveryLabel?: string;
 };
 
 export type DayRollup = {
@@ -46,6 +47,8 @@ export type WeekMetrics = {
     topFragmenters: { code: string; count: number }[];
     totalActiveMinutes: number;
     totalActiveLabel: string;
+    totalRecoveryMinutes?: number;
+    totalRecoveryLabel?: string;
 };
 
 export type WeekReflection = {
@@ -113,6 +116,21 @@ export const api = {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(data),
+            }),
+    },
+
+    recovery: {
+        start: (kind: "COFFEE" | "LUNCH", date: string) =>
+            fetchJson<{ blockId: string }>("/recovery/start", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ kind, date }),
+            }),
+        end: (blockId: string, durationMinutes: number) =>
+            fetchJson("/recovery/end", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ blockId, durationMinutes }),
             }),
     },
 
