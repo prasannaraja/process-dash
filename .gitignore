@@ -28,3 +28,20 @@ dist-ssr/
 
 # General
 .env
+api/app/__pycache__/__init__.cpython-313.pyc
+api/app/__pycache__/db.cpython-313.pyc
+api/app/__pycache__/main.cpython-313.pyc
+api/app/__pycache__/models.cpython-313.pyc
+api/app/__pycache__/settings.cpython-313.pyc
+api/app/routers/__pycache__/__init__.cpython-313.pyc
+api/app/routers/__pycache__/blocks.cpython-313.pyc
+api/app/routers/__pycache__/export.cpython-313.pyc
+api/app/routers/__pycache__/health.cpython-313.pyc
+api/app/routers/__pycache__/intents.cpython-313.pyc
+api/app/routers/__pycache__/recovery.cpython-313.pyc
+api/app/routers/__pycache__/reports.cpython-313.pyc
+api/app/services/__pycache__/__init__.cpython-313.pyc
+api/app/services/__pycache__/events.cpython-313.pyc
+api/app/services/__pycache__/export_md.cpython-313.pyc
+api/app/services/__pycache__/rollups.cpython-313.pyc
+api/app/services/__pycache__/time_buckets.cpython-313.pyc
