@@ -1,5 +1,5 @@
 services:
-  api:
+  backend:
     build:
       context: ./api
       dockerfile: Dockerfile
@@ -7,17 +7,30 @@ services:
       - "8000:8000"
     volumes:
       - ./api:/code
+      - ./data:/data
+    environment:
+      - WORKOBS_DB_PATH=/data/workobs.sqlite
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - process-dash-net
 
   frontend:
     build:
       context: ./frontend/beta
       dockerfile: Dockerfile
     ports:
-      - "5173:5173"
+      - "8080:5173"
     volumes:
       - ./frontend/beta:/app
       - /app/node_modules
+    environment:
+      - VITE_API_BASE=/api
     command: npm run dev -- --host
     depends_on:
-      - api
+      - backend
+    networks:
+      - process-dash-net
+
+networks:
+  process-dash-net:
+    driver: bridge
