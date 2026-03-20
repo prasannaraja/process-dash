@@ -1,8 +1,8 @@
 import json
 from typing import List, Dict, Optional, Any
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from sqlmodel import Session, select
-from app.models import EventLog, SprintDefinition
+from app.models import EventLog, SprintDefinition, Project
 
 def _parse_payload(event: EventLog) -> dict:
     return json.loads(event.payload)
@@ -122,17 +122,21 @@ def get_day_rollup(session: Session, date_str: str) -> Dict[str, Any]:
         }
     }
 
-def _compute_period_metrics(session: Session, start_date: datetime, end_date: datetime) -> Dict[str, Any]:
+def _compute_period_metrics(session: Session, start_date: datetime, end_date: datetime, project_id: Optional[str] = None) -> Dict[str, Any]:
     block_types = [
         "intent_block_started", "intent_block_interrupted", "intent_block_ended",
         "recovery_block_ended"
     ]
-    events = session.exec(
+    query = (
         select(EventLog)
         .where(EventLog.type.in_(block_types))
         .where(EventLog.ts >= start_date)
         .where(EventLog.ts < end_date)
-    ).all()
+    )
+    if project_id:
+        query = query.where(EventLog.project_id == project_id)
+        
+    events = session.exec(query).all()
 
     blocks_map: Dict[str, Dict[str, Any]] = {}
     recovery_minutes = 0.0
@@ -151,9 +155,15 @@ def _compute_period_metrics(session: Session, start_date: datetime, end_date: da
 
         if evt.type == "intent_block_started":
             blocks_map[block_id] = {
+                "blockId": block_id,
+                "intent": p.get("intent"),
+                "notes": p.get("notes"),
+                "date": p.get("date"),
                 "interrupted": False,
                 "durationMinutes": 0,
                 "reasonCode": None,
+                "actualOutcome": None,
+                "durationLabel": ""
             }
         elif block_id in blocks_map:
             if evt.type == "intent_block_interrupted":
@@ -163,8 +173,10 @@ def _compute_period_metrics(session: Session, start_date: datetime, end_date: da
                 if code:
                     fragmenter_counts[code] = fragmenter_counts.get(code, 0) + 1
             elif evt.type == "intent_block_ended":
+                blocks_map[block_id]["actualOutcome"] = p.get("actualOutcome")
                 dur = p.get("durationMinutes") or 0
                 blocks_map[block_id]["durationMinutes"] = dur
+                blocks_map[block_id]["durationLabel"] = bucket_minutes_to_label(dur) or ""
 
     blocks_list = list(blocks_map.values())
     total_blocks = len(blocks_list)
@@ -187,6 +199,51 @@ def _compute_period_metrics(session: Session, start_date: datetime, end_date: da
         "totalActiveLabel": total_active_label,
         "totalRecoveryMinutes": int(recovery_minutes),
         "totalRecoveryLabel": total_recovery_label,
+        "blocks": blocks_list,
+    }
+
+
+def get_projects_dashboard(session: Session) -> List[Dict[str, Any]]:
+    projects = session.exec(select(Project).where(Project.is_active == True)).all()
+    dashboard = []
+    # Lifetime stats
+    start = datetime.min.replace(tzinfo=timezone.utc)
+    end = datetime.max.replace(tzinfo=timezone.utc)
+    for p in projects:
+        metrics = _compute_period_metrics(session, start, end, project_id=p.id)
+        dashboard.append({
+            "id": p.id,
+            "name": p.name,
+            "description": p.description,
+            "metrics": metrics
+        })
+    return dashboard
+
+def get_project_data(session: Session, project_id: str) -> Dict[str, Any]:
+    project = session.get(Project, project_id)
+    if not project:
+        return {}
+    start = datetime.min.replace(tzinfo=timezone.utc)
+    end = datetime.max.replace(tzinfo=timezone.utc)
+    metrics = _compute_period_metrics(session, start, end, project_id=project_id)
+    
+    sprints_payload = []
+    sprints = list_sprint_definitions(session, project_id=project_id)
+    for s in sprints:
+        sprints_payload.append({
+            "id": s.id,
+            "name": s.name,
+            "startDate": s.start_date.isoformat(),
+            "endDate": s.end_date.isoformat(),
+            "durationDays": s.duration_days,
+        })
+        
+    return {
+        "id": project.id,
+        "name": project.name,
+        "metrics": metrics,
+        "sprints": sprints_payload,
+        "blocks": metrics.get("blocks", [])
     }
 
 

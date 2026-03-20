@@ -6,6 +6,8 @@ import WeekView from "./pages/WeekView";
 import WeekendSummary from "./pages/WeekendSummary";
 import SprintSummaries from "./pages/SprintSummaries";
 import ProjectConfig from "./pages/ProjectConfig";
+import ProjectsDashboard from "./pages/ProjectsDashboard";
+import ProjectDataView from "./pages/ProjectDataView";
 
 function App() {
   return (
@@ -18,7 +20,8 @@ function App() {
             <li><Link to="/week" className="hover:text-blue-600">Week Report</Link></li>
             <li><Link to="/weekend" className="hover:text-blue-600 text-gray-400">Weekend</Link></li>
             <li><Link to="/sprints" className="hover:text-blue-600">Sprints</Link></li>
-            <li><Link to="/project" className="hover:text-blue-600">Project</Link></li>
+            <li><Link to="/projects/dashboard" className="text-blue-600 font-bold hover:underline">Projects</Link></li>
+            <li><Link to="/project" className="hover:text-blue-600">Config</Link></li>
           </ul>
         </nav>
 
@@ -28,6 +31,8 @@ function App() {
           <Route path="/week" element={<WeekView />} />
           <Route path="/weekend" element={<WeekendSummary />} />
           <Route path="/sprints" element={<SprintSummaries />} />
+          <Route path="/projects/dashboard" element={<ProjectsDashboard />} />
+          <Route path="/projects/:id/data" element={<ProjectDataView />} />
           <Route path="/project" element={<ProjectConfig />} />
         </Routes>
       </div>

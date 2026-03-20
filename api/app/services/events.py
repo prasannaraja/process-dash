@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from sqlmodel import Session
 from app.models import EventLog
 
-def log_event(session: Session, event_type: str, payload: dict, local_id: str = None) -> EventLog:
+def log_event(session: Session, event_type: str, payload: dict, local_id: str = None, project_id: str = None) -> EventLog:
     """
     Append an event to the log.
     Payload is automatically serialized to JSON.
@@ -11,7 +11,8 @@ def log_event(session: Session, event_type: str, payload: dict, local_id: str = 
     event = EventLog(
         type=event_type,
         payload=json.dumps(payload),
-        ts=datetime.now(timezone.utc)
+        ts=datetime.now(timezone.utc),
+        project_id=project_id
     )
     if local_id:
         # Use provided ID if available (e.g. for offline syncing in future), else auto-gen

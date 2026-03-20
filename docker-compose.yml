@@ -28,6 +28,7 @@ services:
       - /app/node_modules
     environment:
       - VITE_API_BASE=/api
+      - BACKEND_URL=http://backend:8000
     command: npm run dev -- --host
     depends_on:
       - backend

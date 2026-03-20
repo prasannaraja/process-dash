@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 def bucket_minutes(minutes: int | None) -> str:
     """
     Maps actual minutes to approximate bucket labels.

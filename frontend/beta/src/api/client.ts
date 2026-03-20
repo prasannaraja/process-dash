@@ -162,11 +162,11 @@ export const api = {
     },
 
     blocks: {
-        start: (date: string, intent: string, notes?: string) =>
+        start: (date: string, intent: string, notes?: string, projectId?: string) =>
             fetchJson<{ blockId: string }>("/blocks/start", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ date, intent, notes }),
+                body: JSON.stringify({ date, intent, notes, projectId }),
             }),
         interrupt: (blockId: string, reasonCode: string) =>
             fetchJson("/blocks/interrupt", {
@@ -184,6 +184,8 @@ export const api = {
 
     reports: {
         getDay: (date: string) => fetchJson<DayRollup>(`/days/${date}`),
+        getProjectsDashboard: () => fetchJson<{ items: any[] }>("/reports/projects"),
+        getProjectData: (projectId: string) => fetchJson<any>(`/reports/projects/${projectId}/data`),
     },
 
     sprints: {

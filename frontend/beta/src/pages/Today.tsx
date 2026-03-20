@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { api, type DayRollup } from "../api/client";
+import { api, type DayRollup, type ProjectDefinition } from "../api/client";
 
 // Bucket options for dropdown
 const DURATION_BUCKETS = [
@@ -19,6 +19,8 @@ export default function Today() {
     // Block Form State
     const [newIntent, setNewIntent] = useState("");
     const [newNotes, setNewNotes] = useState("");
+    const [projects, setProjects] = useState<ProjectDefinition[]>([]);
+    const [selectedProjectId, setSelectedProjectId] = useState<string>("");
 
     // Action State
     const [interruptReason, setInterruptReason] = useState("MEETING");
@@ -42,6 +44,13 @@ export default function Today() {
 
     useEffect(() => {
         refresh();
+        api.projects.list().then(res => {
+            const activeProjects = res.items.filter(p => p.isActive);
+            setProjects(activeProjects);
+            if (activeProjects.length > 0 && !selectedProjectId) {
+                setSelectedProjectId(activeProjects[0].id);
+            }
+        }).catch(console.error);
     }, [date]);
 
     // If there's an active block but no local startedAt, we can't recover the exact start time 
@@ -57,7 +66,7 @@ export default function Today() {
 
     const handleStartBlock = async () => {
         if (!newIntent) return;
-        await api.blocks.start(date, newIntent, newNotes);
+        await api.blocks.start(date, newIntent, newNotes, selectedProjectId || undefined);
         setNewIntent("");
         setNewNotes("");
         setStartedAt(new Date()); // Start soft timer
@@ -385,11 +394,23 @@ export default function Today() {
                         <h3 className="font-semibold">Start New Block</h3>
                         <div className="space-y-2">
                             <input
-                                className="w-full border p-2"
+                                className="w-full border p-2 mb-2"
                                 placeholder="What are you focusing on?"
                                 value={newIntent}
                                 onChange={(e) => setNewIntent(e.target.value)}
                             />
+                            {projects.length > 0 && (
+                                <select 
+                                    className="w-full border p-2 mb-2 bg-white"
+                                    value={selectedProjectId}
+                                    onChange={(e) => setSelectedProjectId(e.target.value)}
+                                >
+                                    <option value="" disabled>Select Project...</option>
+                                    {projects.map(p => (
+                                        <option key={p.id} value={p.id}>{p.name}</option>
+                                    ))}
+                                </select>
+                            )}
                             <input
                                 className="w-full border p-2"
                                 placeholder="Notes (optional)"

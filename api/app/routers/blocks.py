@@ -12,6 +12,7 @@ class StartBlockRequest(BaseModel):
     date: str
     intent: str
     notes: Optional[str] = None
+    projectId: Optional[str] = None
 
 class InterruptBlockRequest(BaseModel):
     blockId: str
@@ -28,7 +29,7 @@ def start_block(req: StartBlockRequest, session: Session = Depends(get_session))
     payload = req.dict()
     payload["blockId"] = block_id
     
-    log_event(session, "intent_block_started", payload)
+    log_event(session, "intent_block_started", payload, project_id=req.projectId)
     return {"blockId": block_id}
 
 @router.post("/interrupt")
