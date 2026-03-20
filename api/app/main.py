@@ -1,7 +1,7 @@
 from fastapi import FastAPI, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from app.db import init_db
-from app.routers import health, intents, blocks, reports, export, recovery
+from app.routers import health, intents, blocks, reports, export, recovery, sprints, projects
 
 app = FastAPI(title="Work Observability API", version="0.1.0")
 
@@ -9,6 +9,10 @@ app = FastAPI(title="Work Observability API", version="0.1.0")
 origins = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    "http://localhost:8080",
+    "http://127.0.0.1:8080",
+    "http://localhost:5051",
+    "http://127.0.0.1:5051",
 ]
 
 app.add_middleware(
@@ -25,6 +29,8 @@ api_router.include_router(health.router)
 api_router.include_router(intents.router)
 api_router.include_router(blocks.router)
 api_router.include_router(reports.router)
+api_router.include_router(projects.router)
+api_router.include_router(sprints.router)
 api_router.include_router(export.router)
 api_router.include_router(recovery.router)
 

@@ -14,6 +14,23 @@ Response:
 { "status": "ok" }
 ```
 
+### GET /health/storage
+
+Returns active storage configuration and file metadata useful for manual backup/restore workflows.
+
+Response:
+
+```json
+{
+  "databasePath": "/data/workobs.sqlite",
+  "databaseExists": true,
+  "databaseSizeBytes": 32768,
+  "databaseModifiedAtEpoch": 1773039567.0,
+  "backupDir": "/backups",
+  "backupDirExists": true
+}
+```
+
 ---
 
 ## Daily Intents
@@ -100,9 +117,56 @@ Includes constant: `ACTIVE_WORKDAY_MINUTES = 360` for labeling.
 
 ---
 
-## Weekly
+## Sprint Reflection
 
-### POST /weeks/{yearWeek}/summary
+---
+
+## Sprints
+
+### GET /sprints
+
+List configured sprint definitions.
+
+### POST /sprints
+
+```json
+{
+  "name": "Sprint 12",
+  "startDate": "YYYY-MM-DD",
+  "durationDays": 14
+}
+```
+
+Creates a sprint. `endDate` is derived from `startDate + durationDays - 1`.
+
+### PATCH /sprints/{sprintId}
+
+```json
+{
+  "name": "Sprint 12B",
+  "startDate": "YYYY-MM-DD",
+  "durationDays": 14,
+  "forceRecalculate": false
+}
+```
+
+If summary data already exists and date/duration are changed, API responds with:
+
+```json
+{
+  "ok": false,
+  "requiresConfirmation": true,
+  "warning": "This sprint already has saved summaries..."
+}
+```
+
+Resend with `forceRecalculate: true` to apply.
+
+### GET /sprints/{sprintId}/rollup
+
+Returns metrics and reflection for that sprint date range.
+
+### POST /sprints/{sprintId}/summary
 
 ```json
 {
@@ -112,9 +176,39 @@ Includes constant: `ACTIVE_WORKDAY_MINUTES = 360` for labeling.
 }
 ```
 
-### GET /weeks/{yearWeek}
+### GET /sprints/summaries
 
-Returns weekly rollup and reflections.
+Returns latest saved summary per sprint including progress metrics and sprint date range metadata.
+
+Response shape:
+
+```json
+{
+  "items": [
+    {
+      "sprintId": "9f5f2ac6-0e7f-4b86-8eef-b86d6f20e779",
+      "name": "Sprint 12",
+      "startDate": "2026-03-02",
+      "endDate": "2026-03-15",
+      "durationDays": 14,
+      "savedAt": "2026-03-09T12:34:56+00:00",
+      "topFragmenters": ["MEETING"],
+      "notPerformanceIssues": ["Environment instability"],
+      "oneChangeNextWeek": "Cluster meetings post-lunch",
+      "metrics": {
+        "totalBlocks": 9,
+        "interruptedBlocks": 3,
+        "fragmentationRate": 0.33,
+        "focusBlocks": 4,
+        "totalActiveMinutes": 420,
+        "totalActiveLabel": "> 1 day",
+        "totalRecoveryMinutes": 80,
+        "totalRecoveryLabel": "~2 hours"
+      }
+    }
+  ]
+}
+```
 
 ---
 
@@ -122,6 +216,6 @@ Returns weekly rollup and reflections.
 
 ### POST /export/day/{date}
 
-### POST /export/week/{yearWeek}
+### POST /export/sprint/{sprintId}
 
 Exports Markdown files.

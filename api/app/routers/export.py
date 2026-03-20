@@ -11,7 +11,7 @@ def export_day(date_str: str, session: Session = Depends(get_session)):
     path = export_day_to_md(session, date_str)
     return FileResponse(path, filename=f"daily-{date_str}.md", media_type="text/markdown")
 
-@router.post("/week/{year_week}")
-def export_week(year_week: str, session: Session = Depends(get_session)):
-    # Placeholder for week export
+@router.post("/sprint/{sprint_id}")
+def export_sprint(sprint_id: str, session: Session = Depends(get_session)):
+    # Placeholder for sprint export
     return {"path": "Not implemented yet"}

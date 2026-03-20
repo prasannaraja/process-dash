@@ -57,10 +57,84 @@ export type WeekReflection = {
     oneChangeNextWeek: string;
 };
 
-export type WeekRollup = {
-    yearWeek: string;
+export type SprintRollup = {
+    sprintId: string;
+    name: string;
+    startDate: string;
+    endDate: string;
+    durationDays: number;
     metrics: WeekMetrics;
     reflection: WeekReflection;
+};
+
+export type SprintSummaryItem = {
+    sprintId: string;
+    name?: string;
+    startDate?: string;
+    endDate?: string;
+    durationDays?: number;
+    savedAt?: string | null;
+    topFragmenters: string[];
+    notPerformanceIssues: string[];
+    oneChangeNextWeek: string;
+    metrics: WeekMetrics;
+};
+
+export type SprintSummaryListResponse = {
+    items: SprintSummaryItem[];
+};
+
+export type SprintDefinition = {
+    id: string;
+    name: string;
+    startDate: string;
+    endDate: string;
+    durationDays: number;
+    isArchived: boolean;
+};
+
+export type SprintListResponse = {
+    items: SprintDefinition[];
+};
+
+export type ProjectDefinition = {
+    id: string;
+    name: string;
+    description?: string | null;
+    allocationStartDate?: string | null;
+    allocationEndDate?: string | null;
+    isActive: boolean;
+};
+
+export type ProjectListResponse = {
+    items: ProjectDefinition[];
+};
+
+export type ProjectMember = {
+    id: string;
+    projectId: string;
+    name: string;
+    email?: string | null;
+    role: string;
+    isActive: boolean;
+};
+
+export type ProjectContact = {
+    id: string;
+    projectId: string;
+    name: string;
+    email?: string | null;
+    contactRole: string;
+    isPrimary: boolean;
+};
+
+export type TeamAllocation = {
+    id: string;
+    projectId: string;
+    teamMemberId: string;
+    startDate: string;
+    endDate?: string | null;
+    allocationPercentage: number;
 };
 
 // --- Client ---
@@ -110,9 +184,93 @@ export const api = {
 
     reports: {
         getDay: (date: string) => fetchJson<DayRollup>(`/days/${date}`),
-        getWeek: (yearWeek: string) => fetchJson<WeekRollup>(`/weeks/${yearWeek}`),
-        saveWeeklySummary: (yearWeek: string, data: WeeklySummaryRequest) =>
-            fetchJson(`/weeks/${yearWeek}/summary`, {
+    },
+
+    sprints: {
+        list: () => fetchJson<SprintListResponse>("/sprints"),
+        create: (name: string, startDate: string, durationDays: number) =>
+            fetchJson<SprintDefinition>("/sprints", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name, startDate, durationDays }),
+            }),
+        update: (
+            sprintId: string,
+            data: {
+                name?: string;
+                startDate?: string;
+                durationDays?: number;
+                forceRecalculate?: boolean;
+            }
+        ) =>
+            fetchJson<{ ok: boolean; requiresConfirmation?: boolean; warning?: string } & Partial<SprintDefinition>>(
+                `/sprints/${sprintId}`,
+                {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(data),
+                }
+            ),
+        getRollup: (sprintId: string) => fetchJson<SprintRollup>(`/sprints/${sprintId}/rollup`),
+        saveSummary: (sprintId: string, data: WeeklySummaryRequest) =>
+            fetchJson(`/sprints/${sprintId}/summary`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data),
+            }),
+        getSummaries: () => fetchJson<SprintSummaryListResponse>("/sprints/summaries"),
+    },
+
+    projects: {
+        list: () => fetchJson<ProjectListResponse>("/projects"),
+        create: (data: {
+            name: string;
+            description?: string;
+            allocationStartDate?: string;
+            allocationEndDate?: string;
+        }) =>
+            fetchJson<ProjectDefinition>("/projects", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data),
+            }),
+        get: (projectId: string) => fetchJson<ProjectDefinition>(`/projects/${projectId}`),
+        update: (projectId: string, data: Partial<ProjectDefinition>) =>
+            fetchJson<ProjectDefinition>(`/projects/${projectId}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data),
+            }),
+        getConfig: (projectId: string) => fetchJson<{ id: string; projectId: string; defaultSprintDurationDays: number }>(`/projects/${projectId}/config`),
+        updateConfig: (projectId: string, data: { defaultSprintDurationDays?: number }) =>
+            fetchJson<{ id: string; projectId: string; defaultSprintDurationDays: number }>(`/projects/${projectId}/config`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data),
+            }),
+        listMembers: (projectId: string) => fetchJson<{ items: ProjectMember[] }>(`/projects/${projectId}/members`),
+        createMember: (projectId: string, data: { name: string; email?: string; role?: string }) =>
+            fetchJson<ProjectMember>(`/projects/${projectId}/members`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data),
+            }),
+        listContacts: (projectId: string) => fetchJson<{ items: ProjectContact[] }>(`/projects/${projectId}/contacts`),
+        createContact: (
+            projectId: string,
+            data: { name: string; email?: string; contactRole?: string; isPrimary?: boolean }
+        ) =>
+            fetchJson<ProjectContact>(`/projects/${projectId}/contacts`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data),
+            }),
+        listAllocations: (projectId: string) => fetchJson<{ items: TeamAllocation[] }>(`/projects/${projectId}/allocations`),
+        createAllocation: (
+            projectId: string,
+            data: { teamMemberId: string; startDate: string; endDate?: string; allocationPercentage?: number }
+        ) =>
+            fetchJson<TeamAllocation>(`/projects/${projectId}/allocations`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(data),

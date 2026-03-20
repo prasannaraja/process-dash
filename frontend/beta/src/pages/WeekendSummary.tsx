@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
-import { api, type WeekRollup, type DayRollup } from "../api/client";
-import { getCurrentWeek, getDatesInWeek } from "../utils/dateUtils";
+import { api, type SprintDefinition, type SprintRollup, type DayRollup } from "../api/client";
 
 interface IntentSummary {
     name: string;
@@ -20,27 +19,46 @@ function bucketMinutes(m: number): string {
 }
 
 export default function WeekendSummary() {
-    const [yearWeek, setYearWeek] = useState(getCurrentWeek);
-    const [weekData, setWeekData] = useState<WeekRollup | null>(null);
+    const [sprints, setSprints] = useState<SprintDefinition[]>([]);
+    const [selectedSprintId, setSelectedSprintId] = useState("");
+    const [weekData, setWeekData] = useState<SprintRollup | null>(null);
     const [daysData, setDaysData] = useState<DayRollup[]>([]);
     const [loading, setLoading] = useState(false);
     const [selectedImprovements, setSelectedImprovements] = useState<string[]>([]);
 
     useEffect(() => {
-        loadData();
-    }, [yearWeek]); // Reload when week changes
+        const loadSprints = async () => {
+            setLoading(true);
+            try {
+                const sprintsRes = await api.sprints.list();
+                const items = sprintsRes.items || [];
+                setSprints(items);
+                if (items.length > 0) {
+                    setSelectedSprintId(items[0].id);
+                }
+            } catch (e) {
+                console.error(e);
+            } finally {
+                setLoading(false);
+            }
+        };
 
-    const loadData = async () => {
+        loadSprints();
+    }, []);
+
+    useEffect(() => {
+        if (!selectedSprintId) return;
+        loadData(selectedSprintId);
+    }, [selectedSprintId]);
+
+    const loadData = async (sprintId: string) => {
         setLoading(true);
         try {
-            // 1. Fetch Week Aggregate
-            const weekRes = await api.reports.getWeek(yearWeek);
+            const weekRes = await api.sprints.getRollup(sprintId);
             setWeekData(weekRes);
 
-            // 2. Fetch All Days in Week (to build granular views)
-            const dates = getDatesInWeek(yearWeek);
+            const dates = getDatesInRange(weekRes.startDate, weekRes.endDate);
             const dayPromises = dates.map(d => api.reports.getDay(d).catch(() => null));
-            // silently fail for future days or errors
             const days = (await Promise.all(dayPromises)).filter(d => d !== null) as DayRollup[];
             setDaysData(days);
         } catch (e) {
@@ -103,13 +121,17 @@ export default function WeekendSummary() {
             <header className="space-y-2 border-b-2 border-stone-200 pb-6">
                 <div className="flex justify-between items-center">
                     <h1 className="text-3xl font-serif text-stone-800">Weekend Summary</h1>
-                    <input
-                        type="week"
-                        value={yearWeek}
-                        onChange={e => setYearWeek(e.target.value)}
-                        className="bg-transparent border-none text-stone-400 text-sm"
-                    />
+                    <select
+                        value={selectedSprintId}
+                        onChange={(e) => setSelectedSprintId(e.target.value)}
+                        className="bg-white border text-stone-600 text-sm p-1 rounded"
+                    >
+                        {sprints.map((s) => (
+                            <option key={s.id} value={s.id}>{s.name}</option>
+                        ))}
+                    </select>
                 </div>
+                <p className="text-xs text-stone-400">{weekData?.startDate} to {weekData?.endDate}</p>
                 <p className="text-stone-500 italic">Designing a better next week, not judging the last one.</p>
             </header>
 
@@ -256,6 +278,27 @@ export default function WeekendSummary() {
 
         </div>
     );
+}
+
+function getDatesInRange(startDate: string, endDate: string): string[] {
+    const result: string[] = [];
+    const start = new Date(`${startDate}T00:00:00`);
+    const end = new Date(`${endDate}T00:00:00`);
+
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || start > end) {
+        return result;
+    }
+
+    const d = new Date(start);
+    while (d <= end) {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        result.push(`${y}-${m}-${day}`);
+        d.setDate(d.getDate() + 1);
+    }
+
+    return result;
 }
 
 function SummaryCard({ label, value }: { label: string; value: string | number }) {

@@ -84,4 +84,4 @@ When generating reports (Day View, Week View, Markdown Exports), map `durationMi
 ## G. Implementation Notes
 
 - **Frontend**: Responsible for the "Soft Timer" countdown and suggestion logic.
-- **Backend**: Responsible for deriving the `durationLabel` field in `GET /days/{date}` and `GET /weeks/{yearWeek}` responses.
+- **Backend**: Responsible for deriving the `durationLabel` field in `GET /days/{date}` and `GET /sprints/{sprintId}/rollup` responses.

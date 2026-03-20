@@ -1,20 +1,18 @@
-import { useState, useEffect, type KeyboardEvent } from "react";
-import { api, type WeekRollup, type WeeklySummaryRequest } from "../api/client";
+import { useState, useEffect } from "react";
+import { api, type SprintDefinition, type SprintRollup, type WeeklySummaryRequest } from "../api/client";
 
-// Helper to get current ISO week YYYY-Www
-function getCurrentWeek() {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    // Thursday in current week decides the year.
-    d.setDate(d.getDate() + 3 - (d.getDay() + 6) % 7);
-    var week1 = new Date(d.getFullYear(), 0, 4);
-    var week = 1 + Math.round(((d.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
-    return `${d.getFullYear()}-W${String(week).padStart(2, '0')}`;
+function getTodayIsoDate(): string {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
 }
 
 export default function WeekView() {
-    const [yearWeek, setYearWeek] = useState(getCurrentWeek);
-    const [data, setData] = useState<WeekRollup | null>(null);
+    const [sprints, setSprints] = useState<SprintDefinition[]>([]);
+    const [selectedSprintId, setSelectedSprintId] = useState("");
+    const [data, setData] = useState<SprintRollup | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
 
@@ -24,14 +22,14 @@ export default function WeekView() {
     const [selectedFrag, setSelectedFrag] = useState<string[]>([]);
     const [saved, setSaved] = useState(false);
 
-    const fetchWeek = async () => {
+    const fetchSprint = async (sprintId: string) => {
+        if (!sprintId) return;
         setLoading(true);
         setError("");
         setSaved(false);
         try {
-            const res = await api.reports.getWeek(yearWeek);
+            const res = await api.sprints.getRollup(sprintId);
             setData(res);
-            // Hydrate forms
             setNotPerfIssues((res.reflection?.notPerformanceIssues || []).join("\n"));
             setOneChange(res.reflection?.oneChangeNextWeek || "");
             setSelectedFrag(res.reflection?.topFragmenters || []);
@@ -43,56 +41,77 @@ export default function WeekView() {
     };
 
     useEffect(() => {
-        fetchWeek();
-    }, []); // Run once on mount, verify if we should run on yearWeek change? Usually yes.
+        const loadSprints = async () => {
+            setLoading(true);
+            setError("");
+            try {
+                const res = await api.sprints.list();
+                const items = res.items || [];
+                setSprints(items);
+                if (items.length > 0) {
+                    const today = getTodayIsoDate();
+                    const current = items.find((s) => s.startDate <= today && s.endDate >= today);
+                    const target = current || items[0];
+                    setSelectedSprintId(target.id);
+                } else {
+                    setData(null);
+                }
+            } catch (e: any) {
+                setError(e.message);
+            } finally {
+                setLoading(false);
+            }
+        };
 
-    // Allow enter key to load
-    const handleKeyDown = (e: KeyboardEvent) => {
-        if (e.key === "Enter") fetchWeek();
-    };
+        loadSprints();
+    }, []);
+
+    useEffect(() => {
+        if (!selectedSprintId) return;
+        fetchSprint(selectedSprintId);
+    }, [selectedSprintId]);
 
     const handleSave = async () => {
-        if (!data) return;
+        if (!data || !selectedSprintId) return;
         try {
             const payload: WeeklySummaryRequest = {
                 topFragmenters: selectedFrag,
                 notPerformanceIssues: notPerfIssues.split("\n").filter(s => s.trim()),
                 oneChangeNextWeek: oneChange
             };
-            await api.reports.saveWeeklySummary(yearWeek, payload);
+            await api.sprints.saveSummary(selectedSprintId, payload);
             setSaved(true);
-            fetchWeek(); // Reload to confirm persistence
+            fetchSprint(selectedSprintId);
         } catch (e: any) {
             alert("Failed to save: " + e.message);
         }
     };
 
-    if (loading && !data) return <div className="p-8">Loading weekly report...</div>;
+    if (loading && !data) return <div className="p-8">Loading sprint report...</div>;
 
     return (
         <div className="p-4 max-w-4xl mx-auto space-y-8 pb-20">
             <header className="flex items-center gap-4 border-b pb-4">
-                <h1 className="text-2xl font-bold">Weekly Report</h1>
+                <h1 className="text-2xl font-bold">Sprint Report</h1>
                 <div className="flex gap-2">
-                    <input
-                        type="week"
-                        className="border p-1 rounded"
-                        value={yearWeek}
-                        onChange={e => setYearWeek(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                    />
-                    <button
-                        onClick={fetchWeek}
-                        className="bg-slate-800 text-white px-3 py-1 rounded hover:bg-slate-700"
+                    <select
+                        className="border p-2 rounded min-w-64"
+                        value={selectedSprintId}
+                        onChange={(e) => setSelectedSprintId(e.target.value)}
                     >
-                        Load
-                    </button>
+                        {sprints.length === 0 && <option value="">No sprints</option>}
+                        {sprints.map((s) => (
+                            <option key={s.id} value={s.id}>
+                                {s.name} ({s.startDate} to {s.endDate})
+                            </option>
+                        ))}
+                    </select>
                 </div>
             </header>
 
             {error && (
                 <div className="bg-red-50 text-red-600 p-4 rounded">
-                    Error: {error} <button onClick={fetchWeek} className="underline ml-2">Retry</button>
+                    Error: {error}
                 </div>
             )}
 
@@ -115,7 +134,7 @@ export default function WeekView() {
                     <section className="space-y-4">
                         <h3 className="font-bold text-lg">Top Sources of Fragmentation</h3>
                         {(!data?.metrics?.topFragmenters || data.metrics.topFragmenters.length === 0) ? (
-                            <p className="text-gray-500 italic">No interruptions recorded this week.</p>
+                            <p className="text-gray-500 italic">No interruptions recorded for this sprint.</p>
                         ) : (
                             <div className="border rounded overflow-hidden">
                                 <table className="w-full text-sm">
@@ -189,7 +208,7 @@ export default function WeekView() {
                         {/* 3. Structural Change */}
                         <div className="space-y-2">
                             <label className="block font-semibold text-sm">
-                                One structural change for next week?
+                                One structural change for next sprint?
                             </label>
                             <input
                                 type="text"
@@ -215,7 +234,7 @@ export default function WeekView() {
 
             {data && (data.metrics?.totalBlocks || 0) === 0 && !error && (
                 <div className="text-center py-20 text-gray-400">
-                    <h3 className="text-lg font-medium text-gray-500">No blocks recorded for this week.</h3>
+                    <h3 className="text-lg font-medium text-gray-500">No blocks recorded for this sprint.</h3>
                     <p>Go to "Today" to start tracking your work.</p>
                 </div>
             )}

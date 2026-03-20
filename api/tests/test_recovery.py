@@ -1,7 +1,6 @@
-from fastapi.testclient import TestClient
 from sqlmodel import Session
-from datetime import datetime, timedelta
-from app.services.rollups import get_day_rollup, get_week_rollup
+from datetime import datetime
+from app.services.rollups import get_day_rollup, get_sprint_rollup
 
 def test_recovery_flow(session: Session, client):
     # Use today's date so timestamps match
@@ -33,18 +32,13 @@ def test_recovery_flow(session: Session, client):
     # Should NOT affect Active Time
     assert metrics["totalActiveMinutes"] == 0
 
-def test_recovery_week_rollup(session: Session, client):
-    # Calculate current Week string consistent with rollups.py logic
-    # rollups.py uses %Y-W%W-%w. %W is week number (Mon start).
-    today_dt = datetime.now()
-    year = today_dt.year
-    week = today_dt.strftime("%W")
-    year_week = f"{year}-W{week}"
-    
-    # Generate dates within this week
-    # We can just use today_dt for all events to be safe, or calculate specific days
-    # But simplicity: use today for all.
-    today = today_dt.strftime("%Y-%m-%d")
+def test_recovery_sprint_rollup(session: Session, client):
+    today = datetime.now().strftime("%Y-%m-%d")
+
+    sprint = client.post(
+        "/api/sprints",
+        json={"name": "Recovery Sprint", "startDate": today, "durationDays": 1},
+    ).json()
 
     # Day 1: 20 mins
     client.post("/api/recovery/start", json={"kind": "COFFEE", "date": today})
@@ -56,8 +50,8 @@ def test_recovery_week_rollup(session: Session, client):
     bid2 = client.post("/api/recovery/start", json={"kind": "LUNCH", "date": today}).json()["blockId"]
     client.post("/api/recovery/end", json={"blockId": bid2, "durationMinutes": 45})
 
-    # Week Rollup
-    rollup = get_week_rollup(session, year_week)
+    # Sprint Rollup
+    rollup = get_sprint_rollup(session, sprint["id"])
     metrics = rollup["metrics"]
     
     assert metrics["totalRecoveryMinutes"] == 65
