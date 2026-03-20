@@ -24,10 +24,13 @@ No updates or deletes.
 - intent_block_started
 - intent_block_ended
 - intent_block_interrupted
-- weekly_summary_saved
+- sprint_summary_saved
 - recovery_block_started
 - recovery_block_ended
 - code_review_logged
+
+Legacy migration source:
+- weekly_summary_saved (read-only legacy event; can be backfilled via `scripts/backfill_weekly_summaries_to_sprints.py`)
 
 ---
 

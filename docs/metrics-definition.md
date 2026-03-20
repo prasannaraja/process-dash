@@ -6,6 +6,8 @@ A contiguous period with one primary intent.
 
 ## Reporting Metrics
 
+Scope: metrics are reported per day and per sprint date range.
+
 ### Reported Duration Buckets
 
 For external reporting, actual duration is mapped to approximate buckets to avoid false precision.
@@ -21,6 +23,8 @@ A block is considered a "Focus Block" if:
 ## Fragmentation Rate
 
 Interrupted Blocks / Total Blocks
+
+This applies to both day-level and sprint-level rollups.
 
 ## Efficiency
 

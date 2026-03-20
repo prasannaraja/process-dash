@@ -26,7 +26,7 @@
   - Interrupted (Y/N)
   - Reason
 
-### Week View
+### Sprint View
 
 - Metrics:
   - total blocks
@@ -34,7 +34,15 @@
   - top fragmenters
 - Reflection fields:
   - Not performance issues
-  - One structural change
+  - One structural change for next sprint
+
+### Sprint Summaries
+
+- List all saved sprint summaries
+- Show sprint name and date range
+- Show progress metrics per sprint
+- Support sprint creation (name, start date, duration)
+- Support sprint edits with warning-confirm flow when historical summaries exist
 
 ### Code Reviews
 

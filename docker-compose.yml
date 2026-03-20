@@ -4,12 +4,15 @@ services:
       context: ./api
       dockerfile: Dockerfile
     ports:
-      - "8000:8000"
+      - "8001:8000"
     volumes:
       - ./api:/code
       - ./data:/data
+      - ./backups:/backups
     environment:
       - WORKOBS_DB_PATH=/data/workobs.sqlite
+      - WORKOBS_BACKUP_DIR=/backups
+      - WORKOBS_DB_STRICT_PATH=false
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     networks:
       - process-dash-net
@@ -19,7 +22,7 @@ services:
       context: ./frontend/beta
       dockerfile: Dockerfile
     ports:
-      - "8080:5173"
+      - "5051:5173"
     volumes:
       - ./frontend/beta:/app
       - /app/node_modules
