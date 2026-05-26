@@ -34,6 +34,13 @@ export default function DayView() {
                 />
                 <MetricCard label="Active Time" value={data.metrics.totalActiveLabel || "-"} />
                 <MetricCard label="Recovery" value={data.metrics.totalRecoveryLabel || "-"} />
+                {data.metrics.todosCompleted !== undefined && (
+                    <MetricCard
+                        label="Todos Done"
+                        value={`${data.metrics.todosCompleted} / ${data.metrics.todosAdded ?? 0}`}
+                        sub="completed today"
+                    />
+                )}
             </div>
 
             {/* Table */}

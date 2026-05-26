@@ -24,6 +24,16 @@ export type DayMetrics = {
     focusBlocks: number;
     totalActiveLabel?: string;
     totalRecoveryLabel?: string;
+    todosAdded?: number;
+    todosCompleted?: number;
+};
+
+export type Todo = {
+    todoId: string;
+    text: string;
+    date: string;
+    completed: boolean;
+    completionDate?: string | null;
 };
 
 export type DayRollup = {
@@ -31,6 +41,7 @@ export type DayRollup = {
     intents: string[];
     blocks: Block[];
     metrics: DayMetrics;
+    todos: Todo[];
 };
 
 export type WeeklySummaryRequest = {
@@ -49,6 +60,7 @@ export type WeekMetrics = {
     totalActiveLabel: string;
     totalRecoveryMinutes?: number;
     totalRecoveryLabel?: string;
+    todosCompleted?: number;
 };
 
 export type WeekReflection = {
@@ -243,13 +255,43 @@ export const api = {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(data),
             }),
-        getConfig: (projectId: string) => fetchJson<{ id: string; projectId: string; defaultSprintDurationDays: number }>(`/projects/${projectId}/config`),
-        updateConfig: (projectId: string, data: { defaultSprintDurationDays?: number }) =>
-            fetchJson<{ id: string; projectId: string; defaultSprintDurationDays: number }>(`/projects/${projectId}/config`, {
+        getConfig: (projectId: string) => fetchJson<{
+            id: string;
+            projectId: string;
+            defaultSprintDurationDays: number;
+            githubRepo?: string | null;
+            githubToken?: string | null;
+            githubUsername?: string | null;
+        }>(`/projects/${projectId}/config`),
+        updateConfig: (projectId: string, data: {
+            defaultSprintDurationDays?: number;
+            githubRepo?: string | null;
+            githubToken?: string | null;
+            githubUsername?: string | null;
+        }) =>
+            fetchJson<{
+                id: string;
+                projectId: string;
+                defaultSprintDurationDays: number;
+                githubRepo?: string | null;
+                githubToken?: string | null;
+                githubUsername?: string | null;
+            }>(`/projects/${projectId}/config`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(data),
             }),
+        getGithubActivity: (projectId: string, startDate: string, endDate: string) =>
+            fetchJson<{
+                configured: boolean;
+                reason?: string;
+                error?: string;
+                activity?: Record<string, {
+                    commits: Array<{ sha: string; message: string; url: string; date: string }>;
+                    prs: Array<{ number: number; title: string; state: string; url: string; date: string }>;
+                    reviews: Array<{ number: number; title: string; state: string; url: string; date: string }>;
+                }>;
+            }>(`/projects/${projectId}/github/activity?start_date=${startDate}&end_date=${endDate}`),
         listMembers: (projectId: string) => fetchJson<{ items: ProjectMember[] }>(`/projects/${projectId}/members`),
         createMember: (projectId: string, data: { name: string; email?: string; role?: string }) =>
             fetchJson<ProjectMember>(`/projects/${projectId}/members`, {
@@ -292,6 +334,31 @@ export const api = {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ blockId, durationMinutes }),
             }),
+    },
+
+    todos: {
+        list: (date: string) =>
+            fetchJson<{ date: string; todos: Todo[] }>(`/todos/${date}`),
+        add: (date: string, text: string) =>
+            fetchJson<{ ok: boolean; todoId: string }>("/todos", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ date, text }),
+            }),
+        complete: (todoId: string, completionDate: string) =>
+            fetchJson<{ ok: boolean }>(`/todos/${todoId}/complete`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ completionDate }),
+            }),
+        uncomplete: (todoId: string, completionDate: string) =>
+            fetchJson<{ ok: boolean }>(`/todos/${todoId}/uncomplete`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ completionDate }),
+            }),
+        delete: (todoId: string) =>
+            fetchJson<{ ok: boolean }>(`/todos/${todoId}`, { method: "DELETE" }),
     },
 
     export: {

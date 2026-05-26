@@ -13,6 +13,7 @@ from app.models import (
     TeamAllocation,
     TeamMember,
 )
+from app.services.github import fetch_github_activity
 
 
 router = APIRouter(prefix="/projects", tags=["projects"])
@@ -35,6 +36,9 @@ class ProjectUpdateRequest(BaseModel):
 
 class ProjectConfigUpdateRequest(BaseModel):
     defaultSprintDurationDays: Optional[int] = Field(default=None, ge=1, le=60)
+    githubRepo: Optional[str] = None
+    githubToken: Optional[str] = None
+    githubUsername: Optional[str] = None
 
 
 class TeamMemberCreateRequest(BaseModel):
@@ -165,6 +169,9 @@ def get_project_config(project_id: str, session: Session = Depends(get_session))
         "id": config.id,
         "projectId": config.project_id,
         "defaultSprintDurationDays": config.default_sprint_duration_days,
+        "githubRepo": config.github_repo,
+        "githubToken": config.github_token,
+        "githubUsername": config.github_username,
     }
 
 
@@ -177,6 +184,12 @@ def update_project_config(project_id: str, req: ProjectConfigUpdateRequest, sess
 
     if req.defaultSprintDurationDays is not None:
         config.default_sprint_duration_days = req.defaultSprintDurationDays
+    if req.githubRepo is not None:
+        config.github_repo = req.githubRepo.strip() if req.githubRepo else None
+    if req.githubToken is not None:
+        config.github_token = req.githubToken.strip() if req.githubToken else None
+    if req.githubUsername is not None:
+        config.github_username = req.githubUsername.strip() if req.githubUsername else None
 
     config.updated_at = datetime.now(timezone.utc)
     session.add(config)
@@ -186,7 +199,40 @@ def update_project_config(project_id: str, req: ProjectConfigUpdateRequest, sess
         "id": config.id,
         "projectId": config.project_id,
         "defaultSprintDurationDays": config.default_sprint_duration_days,
+        "githubRepo": config.github_repo,
+        "githubToken": config.github_token,
+        "githubUsername": config.github_username,
     }
+
+@router.get("/{project_id}/github/activity")
+async def get_project_github_activity(
+    project_id: str,
+    start_date: str,
+    end_date: str,
+    session: Session = Depends(get_session)
+):
+    _assert_project_exists(session, project_id)
+    config = session.exec(select(ProjectConfiguration).where(ProjectConfiguration.project_id == project_id)).first()
+    if not config or not config.github_repo or not config.github_username:
+        return {
+            "configured": False,
+            "reason": "GitHub Integration is not fully configured for this project. Please configure it in the Config tab."
+        }
+    
+    parsed_start = _parse_iso_date(start_date)
+    parsed_end = _parse_iso_date(end_date)
+    
+    if not parsed_start or not parsed_end or parsed_start > parsed_end:
+        raise HTTPException(status_code=400, detail="Invalid date range.")
+
+    res = await fetch_github_activity(
+        repo=config.github_repo,
+        username=config.github_username,
+        token=config.github_token,
+        start_date=parsed_start,
+        end_date=parsed_end
+    )
+    return res
 
 
 @router.get("/{project_id}/members")

@@ -23,6 +23,9 @@ class ProjectConfiguration(SQLModel, table=True):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     project_id: str = Field(foreign_key="projects.id", index=True)
     default_sprint_duration_days: int = Field(default=14)
+    github_repo: Optional[str] = Field(default=None)
+    github_token: Optional[str] = Field(default=None)
+    github_username: Optional[str] = Field(default=None)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 

@@ -2,12 +2,13 @@ import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
 import Today from "./pages/Today";
 import DayView from "./pages/DayView";
 import WeekView from "./pages/WeekView";
-
+import Todos from "./pages/Todos";
 import WeekendSummary from "./pages/WeekendSummary";
 import SprintSummaries from "./pages/SprintSummaries";
 import ProjectConfig from "./pages/ProjectConfig";
 import ProjectsDashboard from "./pages/ProjectsDashboard";
 import ProjectDataView from "./pages/ProjectDataView";
+import Activity from "./pages/Activity";
 
 function App() {
   return (
@@ -16,8 +17,10 @@ function App() {
         <nav className="border-b p-4 mb-4">
           <ul className="flex gap-6 max-w-4xl mx-auto">
             <li><Link to="/" className="font-bold hover:text-blue-600">Today</Link></li>
+            <li><Link to="/todos" className="hover:text-blue-600">Todos</Link></li>
             <li><Link to="/day" className="hover:text-blue-600">Day Report</Link></li>
             <li><Link to="/week" className="hover:text-blue-600">Week Report</Link></li>
+            <li><Link to="/activity" className="hover:text-blue-600 font-semibold text-blue-700">Activity</Link></li>
             <li><Link to="/weekend" className="hover:text-blue-600 text-gray-400">Weekend</Link></li>
             <li><Link to="/sprints" className="hover:text-blue-600">Sprints</Link></li>
             <li><Link to="/projects/dashboard" className="text-blue-600 font-bold hover:underline">Projects</Link></li>
@@ -27,8 +30,10 @@ function App() {
 
         <Routes>
           <Route path="/" element={<Today />} />
+          <Route path="/todos" element={<Todos />} />
           <Route path="/day" element={<DayView />} />
           <Route path="/week" element={<WeekView />} />
+          <Route path="/activity" element={<Activity />} />
           <Route path="/weekend" element={<WeekendSummary />} />
           <Route path="/sprints" element={<SprintSummaries />} />
           <Route path="/projects/dashboard" element={<ProjectsDashboard />} />

@@ -104,12 +104,52 @@ def get_day_rollup(session: Session, date_str: str) -> Dict[str, Any]:
     fragmentation_rate = 0.0
     if total_blocks > 0:
         fragmentation_rate = interrupted_blocks / total_blocks
-        
+
+    # 4. Replay todo events — todos created on date_str, completions counted by completionDate (Option A)
+    todo_events = session.exec(
+        select(EventLog)
+        .where(EventLog.type.in_(["todo_added", "todo_completed", "todo_uncompleted", "todo_deleted"]))
+        .order_by(EventLog.ts)
+    ).all()
+
+    todos_map: Dict[str, Any] = {}
+    deleted_todo_ids: set = set()
+
+    for evt in todo_events:
+        p = _parse_payload(evt)
+        todo_id = p.get("todoId")
+        if not todo_id:
+            continue
+        if evt.type == "todo_added" and p.get("date") == date_str:
+            todos_map[todo_id] = {
+                "todoId": todo_id,
+                "text": p.get("text", ""),
+                "date": p.get("date"),
+                "completed": False,
+                "completionDate": None,
+            }
+        elif evt.type == "todo_completed" and todo_id in todos_map:
+            todos_map[todo_id]["completed"] = True
+            todos_map[todo_id]["completionDate"] = p.get("completionDate")
+        elif evt.type == "todo_uncompleted" and todo_id in todos_map:
+            todos_map[todo_id]["completed"] = False
+            todos_map[todo_id]["completionDate"] = None
+        elif evt.type == "todo_deleted":
+            deleted_todo_ids.add(todo_id)
+
+    todos_list = [t for tid, t in todos_map.items() if tid not in deleted_todo_ids]
+    todos_added = len(todos_list)
+    # Count completions where completionDate == date_str (Option A: counts toward the day it was ticked off)
+    todos_completed = sum(
+        1 for t in todos_list if t["completed"] and t.get("completionDate") == date_str
+    )
+
     return {
         "date": date_str,
         "intents": daily_intents,
         "blocks": blocks_list,
         "recoveryBlocks": recovery_list,
+        "todos": todos_list,
         "metrics": {
             "totalBlocks": total_blocks,
             "interruptedBlocks": interrupted_blocks,
@@ -118,7 +158,9 @@ def get_day_rollup(session: Session, date_str: str) -> Dict[str, Any]:
             "totalActiveMinutes": total_active_minutes,
             "totalActiveLabel": total_active_label,
             "totalRecoveryMinutes": total_recovery_minutes,
-            "totalRecoveryLabel": total_recovery_label
+            "totalRecoveryLabel": total_recovery_label,
+            "todosAdded": todos_added,
+            "todosCompleted": todos_completed,
         }
     }
 
@@ -135,7 +177,7 @@ def _compute_period_metrics(session: Session, start_date: datetime, end_date: da
     )
     if project_id:
         query = query.where(EventLog.project_id == project_id)
-        
+
     events = session.exec(query).all()
 
     blocks_map: Dict[str, Dict[str, Any]] = {}
@@ -189,6 +231,15 @@ def _compute_period_metrics(session: Session, start_date: datetime, end_date: da
     top_fragmenters = [{"code": k, "count": v} for k, v in fragmenter_counts.items()]
     top_fragmenters.sort(key=lambda x: x["count"], reverse=True)
 
+    # Count todos completed within this period (Option A: by completionDate timestamp)
+    todo_completion_events = session.exec(
+        select(EventLog)
+        .where(EventLog.type == "todo_completed")
+        .where(EventLog.ts >= start_date)
+        .where(EventLog.ts < end_date)
+    ).all()
+    todos_completed = len(todo_completion_events)
+
     return {
         "totalBlocks": total_blocks,
         "interruptedBlocks": interrupted_blocks,
@@ -199,6 +250,7 @@ def _compute_period_metrics(session: Session, start_date: datetime, end_date: da
         "totalActiveLabel": total_active_label,
         "totalRecoveryMinutes": int(recovery_minutes),
         "totalRecoveryLabel": total_recovery_label,
+        "todosCompleted": todos_completed,
         "blocks": blocks_list,
     }
 

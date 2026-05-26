@@ -128,6 +128,9 @@ export default function WeekView() {
                         />
                         <MetricCard label="Focus Blocks" value={data?.metrics?.focusBlocks || 0} />
                         <MetricCard label="Recovery" value={data?.metrics?.totalRecoveryLabel || "-"} />
+                        {(data?.metrics?.todosCompleted !== undefined) && (
+                            <MetricCard label="Todos Done" value={data.metrics.todosCompleted} sub="this sprint" />
+                        )}
                     </section>
 
                     {/* Fragmenters Table */}

@@ -34,6 +34,11 @@ def ensure_sqlite_compat_schema(session: Session):
     _ensure_column(session, "sprint_definitions", "project_id", "VARCHAR")
     _ensure_index(session, "ix_sprint_definitions_project_id", "sprint_definitions", "project_id")
 
+    # Add GitHub configuration columns to project_configurations table
+    _ensure_column(session, "project_configurations", "github_repo", "VARCHAR")
+    _ensure_column(session, "project_configurations", "github_token", "VARCHAR")
+    _ensure_column(session, "project_configurations", "github_username", "VARCHAR")
+
     session.commit()
 
 

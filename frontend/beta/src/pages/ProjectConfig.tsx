@@ -12,6 +12,9 @@ export default function ProjectConfig() {
     const [allocationStartDate, setAllocationStartDate] = useState("");
     const [allocationEndDate, setAllocationEndDate] = useState("");
     const [defaultSprintDurationDays, setDefaultSprintDurationDays] = useState(14);
+    const [githubRepo, setGithubRepo] = useState("");
+    const [githubToken, setGithubToken] = useState("");
+    const [githubUsername, setGithubUsername] = useState("");
 
     const [members, setMembers] = useState<ProjectMember[]>([]);
     const [contacts, setContacts] = useState<ProjectContact[]>([]);
@@ -50,6 +53,9 @@ export default function ProjectConfig() {
         setAllocationStartDate(project.allocationStartDate || "");
         setAllocationEndDate(project.allocationEndDate || "");
         setDefaultSprintDurationDays(config.defaultSprintDurationDays || 14);
+        setGithubRepo(config.githubRepo || "");
+        setGithubToken(config.githubToken || "");
+        setGithubUsername(config.githubUsername || "");
         setMembers(membersRes.items || []);
         setContacts(contactsRes.items || []);
         setAllocations(allocationsRes.items || []);
@@ -120,7 +126,12 @@ export default function ProjectConfig() {
                 allocationStartDate,
                 allocationEndDate,
             });
-            await api.projects.updateConfig(projectId, { defaultSprintDurationDays });
+            await api.projects.updateConfig(projectId, {
+                defaultSprintDurationDays,
+                githubRepo,
+                githubToken,
+                githubUsername,
+            });
             await load();
         } catch (e: any) {
             setError(e.message || "Failed to save project details");
@@ -210,13 +221,56 @@ export default function ProjectConfig() {
                 </select>
 
                 {selectedProject && (
-                    <div className="grid md:grid-cols-2 gap-3">
-                        <input className="border p-2 rounded" value={projectName} onChange={(e) => setProjectName(e.target.value)} placeholder="Project name" />
-                        <input className="border p-2 rounded" value={projectDescription} onChange={(e) => setProjectDescription(e.target.value)} placeholder="Description" />
-                        <input type="date" className="border p-2 rounded" value={allocationStartDate} onChange={(e) => setAllocationStartDate(e.target.value)} />
-                        <input type="date" className="border p-2 rounded" value={allocationEndDate} onChange={(e) => setAllocationEndDate(e.target.value)} />
-                        <input type="number" min={1} max={60} className="border p-2 rounded" value={defaultSprintDurationDays} onChange={(e) => setDefaultSprintDurationDays(Number(e.target.value))} />
-                        <button className="bg-blue-600 text-white px-3 py-2 rounded" onClick={handleSaveProject}>Save Project Details</button>
+                    <div className="space-y-4">
+                        <div className="grid md:grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                                <label className="text-xs font-semibold text-gray-500">Project Name</label>
+                                <input className="border p-2 rounded w-full" value={projectName} onChange={(e) => setProjectName(e.target.value)} placeholder="Project name" />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-xs font-semibold text-gray-500">Description</label>
+                                <input className="border p-2 rounded w-full" value={projectDescription} onChange={(e) => setProjectDescription(e.target.value)} placeholder="Description" />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-xs font-semibold text-gray-500">Allocation Start</label>
+                                <input type="date" className="border p-2 rounded w-full" value={allocationStartDate} onChange={(e) => setAllocationStartDate(e.target.value)} />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-xs font-semibold text-gray-500">Allocation End</label>
+                                <input type="date" className="border p-2 rounded w-full" value={allocationEndDate} onChange={(e) => setAllocationEndDate(e.target.value)} />
+                            </div>
+                            <div className="space-y-1 md:col-span-2">
+                                <label className="text-xs font-semibold text-gray-500">Default Sprint Duration (Days)</label>
+                                <input type="number" min={1} max={60} className="border p-2 rounded w-full" value={defaultSprintDurationDays} onChange={(e) => setDefaultSprintDurationDays(Number(e.target.value))} />
+                            </div>
+                        </div>
+
+                        <div className="border-t pt-4 mt-4 space-y-3">
+                            <h3 className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                                🐙 GitHub Integration
+                            </h3>
+                            <p className="text-xs text-gray-500">
+                                Configure a GitHub repository to automatically link commits, pull requests, and review contributions inside your daily/sprint activity timelines.
+                            </p>
+                            <div className="grid md:grid-cols-3 gap-3">
+                                <div className="space-y-1">
+                                    <label className="text-xs font-semibold text-gray-500">Repository Name (owner/repo)</label>
+                                    <input className="border p-2 rounded w-full font-mono text-sm" value={githubRepo} onChange={(e) => setGithubRepo(e.target.value)} placeholder="e.g. facebook/react" />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs font-semibold text-gray-500">GitHub Username</label>
+                                    <input className="border p-2 rounded w-full font-mono text-sm" value={githubUsername} onChange={(e) => setGithubUsername(e.target.value)} placeholder="e.g. gaearon" />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs font-semibold text-gray-500">Personal Access Token (PAT)</label>
+                                    <input type="password" className="border p-2 rounded w-full font-mono text-sm" value={githubToken} onChange={(e) => setGithubToken(e.target.value)} placeholder="ghp_..." />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end pt-2">
+                            <button className="bg-blue-600 text-white px-5 py-2 rounded hover:bg-blue-700 transition" onClick={handleSaveProject}>Save Details & Integration</button>
+                        </div>
                     </div>
                 )}
             </section>
