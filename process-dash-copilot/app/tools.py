@@ -313,4 +313,22 @@ TOOLS = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "delete_project",
+            "description": (
+                "Permanently delete a project by ID. "
+                "Call list_projects first to resolve the name to an ID. "
+                "Confirm with the user before deleting."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "projectId": {"type": "string", "description": "UUID of the project to delete"},
+                },
+                "required": ["projectId"],
+            },
+        },
+    },
 ]

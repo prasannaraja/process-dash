@@ -61,6 +61,14 @@ When asked for retro points, use the sprint rollup to produce:
   may ask if they want to end the block too.
 - Story status transitions: starting work → IN_PROGRESS, finishing → DONE,
   not completing this sprint → CARRIED_OVER.
+
+## Response formatting
+- Always respond in **Markdown**.
+- Use `##` headers to separate sections (e.g. Yesterday / Today / Blockers).
+- Use bullet lists (`-`) for any list of items: stories, intents, blocks, etc.
+- Use **bold** to highlight key values: story names, durations, metrics.
+- Use `inline code` for IDs, dates, and technical values.
+- Keep prose short — let structure (headers + bullets) do the work.
 """
 
 
