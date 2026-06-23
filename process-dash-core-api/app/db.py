@@ -67,7 +67,7 @@ def ensure_default_project(session: Session):
     if existing:
         return existing
 
-    project = Project(name="Default Project", description="Initial project")
+    project = Project(name="Internal Project", description="Internal project")
     session.add(project)
     session.commit()
     session.refresh(project)

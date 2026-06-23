@@ -156,6 +156,13 @@ def update_project(project_id: str, req: ProjectUpdateRequest, session: Session 
     return _project_dict(project)
 
 
+@router.delete("/{project_id}", status_code=204)
+def delete_project(project_id: str, session: Session = Depends(get_session)):
+    project = _assert_project_exists(session, project_id)
+    session.delete(project)
+    session.commit()
+
+
 @router.get("/{project_id}/config")
 def get_project_config(project_id: str, session: Session = Depends(get_session)):
     _assert_project_exists(session, project_id)
