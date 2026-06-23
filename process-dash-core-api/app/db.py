@@ -39,6 +39,10 @@ def ensure_sqlite_compat_schema(session: Session):
     _ensure_column(session, "project_configurations", "github_token", "VARCHAR")
     _ensure_column(session, "project_configurations", "github_username", "VARCHAR")
 
+    # Phase 1: retroactive logging support
+    _ensure_column(session, "event_log", "occurred_at", "DATETIME")
+    _ensure_index(session, "ix_event_log_occurred_at", "event_log", "occurred_at")
+
     session.commit()
 
 
