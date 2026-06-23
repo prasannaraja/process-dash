@@ -5,19 +5,26 @@
 
 ## 1. Where We Are Now (Current State)
 
-We have completed:
-- A **full conceptual and functional understanding** of Process Dashboard
-- Clear separation of:
-  - Philosophy (why)
-  - Usage (how)
-  - Reporting & learning (what you gain)
-  - Internals & limitations (where it breaks today)
+### Completed
 
-What we **do NOT yet have**:
-- A concrete mapping to *your* real workflows
-- A modern execution model
-- A step-by-step adoption or rebuild path
-- A way to avoid PSP’s historical “discipline fatigue”
+- Full conceptual and functional understanding of Process Dashboard (PSP/TSP philosophy)
+- Canonical domain model implemented as an append-only event log in SQLite
+- **`process-dash-core-api`** — FastAPI backend fully built: intents, blocks, recovery, sprints, projects, todos, export, rollups, reporting, time buckets
+- **`process-dash-frontend/beta`** — React 19 + Vite frontend with 10 pages covering daily, week, sprint, project, and todo workflows
+- Docker Compose setup for local and container deployment
+- Full documentation across all packages
+
+### In Progress
+
+- **`process-dash-core-mcp`** — MCP server wrapping the core API (scaffolded, not yet implemented)
+- **`process-dash-copilot`** — LLM copilot using the MCP layer (scaffolded, not yet implemented)
+
+### Not Yet Started
+
+- LLM hosting container (llama-cpp or OpenAI-compatible)
+- Sprint export endpoint (placeholder only)
+- Passive/automated time capture
+- External integrations (Git, calendar, CI)
 
 ---
 
@@ -27,158 +34,172 @@ What we **do NOT yet have**:
 > Strong ideas → weak modern usability
 
 Specifically:
-- High cognitive load
-- Manual discipline dependency
-- Outdated interaction model
-- No natural integration with modern tools (IDE, Git, CI, calendars, finance apps, etc.)
+- High cognitive load for manual logging
+- No conversational or natural-language interface
+- No way to query your own data without navigating the UI
 
 ### The Goal
 > Preserve **rigor + learning**, remove **friction + ceremony**
 
----
-
-## 3. Bridging Strategy (High-Level)
-
-We bridge the gap in **4 deliberate layers**, not all at once.
-
-Concepts → Model → Workflow → Automation
-
-Each layer builds on the previous one.
+The MCP + Copilot layer is the answer to this gap — it lets you interact with your work data through natural language while keeping the structured event log as the source of truth.
 
 ---
 
-## 4. Layer 1 — Concept Translation (PSP → Modern Mental Model)
+## 3. Bridging Strategy
+
+Four deliberate layers, building on each other:
+
+```
+Concepts → Model → Workflow → Copilot Automation
+```
+
+Layers 1–3 are complete. Layer 4 (Copilot) is the active front.
+
+---
+
+## 4. Layer 1 — Concept Translation ✅ Done
+
+PSP concepts mapped to modern equivalents:
+
+| PSP Concept       | This System                  |
+|-------------------|------------------------------|
+| Task              | Intent / Work Block          |
+| Time Log          | Telemetry Event (event_log)  |
+| Defect            | Interruption / Quality tag   |
+| Rollup            | Day / Sprint aggregation     |
+| Postmortem        | Sprint summary + reflection  |
+| Script            | Guided UI workflow           |
+
+---
+
+## 5. Layer 2 — Canonical Domain Model ✅ Done
+
+Implemented in `process-dash-core-api`:
+
+- Append-only `event_log` table — all data as immutable events
+- Rollups derived on read, never stored
+- Projects, sprints, intents, blocks, recovery, todos all modelled
+- SQLite local-first; configurable path via env vars
+
+See `process-dash-docs/db-schema.md` for full schema.
+
+---
+
+## 6. Layer 3 — Daily Workflow ✅ Done
+
+Delivered through `process-dash-frontend/beta`:
+
+- Today page — declare intents, log blocks and interruptions
+- DayView — review any day's rollup
+- WeekView / WeekendSummary — weekly reflection
+- SprintSummaries — sprint history and metrics
+- Projects — project-level tracking
+- Todos — lightweight task list
+
+---
+
+## 7. Layer 4 — Copilot Automation 🚧 In Progress
 
 ### Objective
-Translate PSP ideas into **modern, intuitive concepts** you already understand.
 
-| PSP Concept            | Modern Equivalent                         |
-|------------------------|--------------------------------------------|
-| Task                   | Work Unit / Ticket / Slice                 |
-| Time Log               | Telemetry Event                            |
-| Defect                 | Quality Incident                           |
-| Injection/Removal      | Origin / Detection                         |
-| Rollup                 | Aggregation Pipeline                       |
-| Postmortem             | Retrospective Snapshot                    |
-| Script                 | Guided Workflow / Policy                  |
+Let you log work, query history, and get insights through natural language — without opening the UI.
 
-Outcome:
-- PSP stops feeling “academic”
-- Becomes **engineering observability**
+### Architecture
 
----
+```
+process-dash-copilot
+    │
+    │  MCP (tool calls)
+    ▼
+process-dash-core-mcp
+    │
+    │  HTTP (REST)
+    ▼
+process-dash-core-api
+    │
+    │  SQLite
+    ▼
+process-dash-data/workobs.sqlite
+```
 
-## 5. Layer 2 — Canonical Domain Model (Technology-Agnostic)
+The copilot never touches the database directly. All reads and writes go through the MCP → API chain, keeping the event log as the single source of truth.
 
-### Objective
-Define a **clean domain model** independent of UI or tools.
+### LLM Hosting
 
-Core entities:
-- Project
-- WorkItem
-- TimeEntry
-- QualityEvent
-- Estimate
-- Actual
-- Retrospective
+The LLM powering the copilot runs locally in a Docker container using **llama-cpp** (or any OpenAI-compatible server). This keeps all data on-device — no data leaves your machine.
 
-Key rules:
-- Append-only logs (no silent overwrites)
-- Rollups are **derived**, never stored
-- Raw data is user-owned
-- Analysis is reproducible
+```
+process-dash-llm  (Docker container)
+  llama-cpp-python server OR any OpenAI-compatible endpoint
+  exposes: http://localhost:11434/v1  (OpenAI-compatible API)
+```
 
-Outcome:
-- Single source of truth
-- Easy to reimplement in any stack
+The copilot is designed to work with any OpenAI-compatible endpoint, so you can swap in:
+- llama-cpp (local, private, offline)
+- Ollama (local, easier model management)
+- OpenAI API (cloud, higher capability)
+- Any other OpenAI-compatible host
 
----
-
-## 6. Layer 3 — Daily Workflow Redesign (Human-Centric)
-
-### Objective
-Reduce friction to **near-zero** for daily use.
-
-Principles:
-- Fewer explicit steps
-- Context-aware defaults
-- Keyboard-first interactions
-- “Do first, reflect later”
-
-Example redesigned daily flow:
-1. Select context (or auto-detect)
-2. Work
-3. Passive time capture
-4. Lightweight quality tagging
-5. Deferred reflection (batch postmortem)
-
-Outcome:
-- Discipline without exhaustion
-- Consistency without resentment
+Configuration is a single env var (`COPILOT_LLM_BASE_URL`), no code changes.
 
 ---
 
-## 7. Layer 4 — Automation & Integration
+## 8. Execution Roadmap
 
-### Objective
-Let systems do what humans are bad at.
+### Phase 1 — Alignment ✅ Done
+- Locked modern domain vocabulary
+- Froze canonical data model
+- Defined minimum viable discipline
 
-Automation targets:
-- Time capture (IDE, OS, calendar signals)
-- Task context inference
-- Rollups and trend detection
-- Postmortem reminders
-- Anomaly detection (estimate drift, quality spikes)
+### Phase 2 — Prototype ✅ Done
+- Local-first event log tracker
+- REST API with full CRUD
+- React frontend for daily and sprint workflows
 
-Integrations (optional, phased):
-- Git commits → work attribution
-- CI failures → defect signals
-- Calendar → planned vs actual
-- Finance planner → effort-to-cost mapping (natural fit with your Planner-Hub)
+### Phase 3 — MCP Layer 🚧 Next
+Build `process-dash-core-mcp`:
+- Implement MCP server (Python, `mcp` SDK)
+- Expose one tool per core API capability (intents, blocks, recovery, days, sprints, export)
+- Wire `CORE_API_BASE_URL` config
+- Add to Docker Compose as a service
 
-Outcome:
-- Human judgment stays central
-- Machines handle bookkeeping
+### Phase 4 — Copilot 🔜 After Phase 3
+Build `process-dash-copilot`:
+- Connect to MCP via tool-calling loop
+- Connect to LLM via OpenAI-compatible client
+- Support conversational logging and querying
+- Wire `COPILOT_LLM_BASE_URL` and `MCP_SERVER_URL` config
+- Add to Docker Compose as a service
 
----
+### Phase 5 — LLM Container 🔜 Alongside Phase 4
+Build `process-dash-llm` Docker service:
+- Base image: `ghcr.io/ggerganov/llama.cpp:server` or equivalent
+- Mount model weights as a volume
+- Expose OpenAI-compatible endpoint on port `11434`
+- Document model selection and GGUF format requirements
 
-## 8. Coverage Matrix (How We Ensure Nothing Is Missed)
-
-| Area                    | Coverage Method                         |
-|-------------------------|------------------------------------------|
-| Time                    | Passive + manual correction              |
-| Quality                 | Lightweight incident tagging             |
-| Estimation              | Mandatory upfront, optional refinement   |
-| Learning                | Scheduled retrospectives                 |
-| Trends                  | Automated reports                        |
-| Privacy                 | Local-first, explicit sharing            |
-| Scalability              | Event-based, append-only                 |
-
-Nothing is removed — only **re-expressed**.
-
----
-
-## 9. Execution Roadmap (Concrete Next Steps)
-
-### Phase 1 — Alignment
-- Lock modern domain vocabulary
-- Freeze canonical data model
-- Define “minimum viable discipline”
-
-### Phase 2 — Prototype
-- Simple local-first tracker
-- Manual inputs only
-- Focus on clarity, not automation
-
-### Phase 3 — Automation
-- Introduce passive capture
-- Add rollups and trends
-- Validate signal vs noise
-
-### Phase 4 — Expansion
-- Integrations
+### Phase 6 — Expansion 🔜 Future
+- Passive time capture (IDE, Git, calendar signals)
+- Sprint export endpoint (currently placeholder)
 - Team-level aggregation
-- Advanced analytics
+- External integrations (GitHub commits, CI, calendar)
+
+---
+
+## 9. Coverage Matrix
+
+| Area          | Status   | Method                                      |
+|---------------|----------|---------------------------------------------|
+| Time          | ✅ Done  | Manual block logging via UI or copilot      |
+| Intents       | ✅ Done  | Daily intent declaration                    |
+| Sprints       | ✅ Done  | Sprint definitions, rollups, summaries      |
+| Projects      | ✅ Done  | Project-level tracking                      |
+| Quality       | ✅ Done  | Interruption reason codes                   |
+| MCP layer     | 🚧 Next  | Tools wrapping core API                     |
+| Copilot       | 🔜 Soon  | LLM agent over MCP                          |
+| LLM hosting   | 🔜 Soon  | llama-cpp or OpenAI-compatible in Docker    |
+| Passive capture | ❌ TBD | IDE/Git/calendar signals                    |
+| Integrations  | ❌ TBD  | Git, CI, calendar, finance                  |
 
 ---
 
@@ -187,13 +208,4 @@ Nothing is removed — only **re-expressed**.
 > **Never automate confusion.**  
 > First make it clear, then make it easy, then make it fast.
 
----
-
-## Next Possible Directions (You Choose)
-
-- Convert this into a **formal design doc**
-- Define the **exact domain model in `.md` or UML**
-- Draft a **Phase 1 implementation plan**
-- Map this directly into your existing Planner-Hub architecture
-
-Say which one you want next, and we’ll continue — always in `.md`.
+The event log is clear. The UI makes it easy. The copilot makes it fast.
