@@ -34,6 +34,12 @@ def _patch(path: str, body: dict = None) -> dict:
         return r.json()
 
 
+def _delete(path: str) -> None:
+    with _client() as c:
+        r = c.delete(path)
+        r.raise_for_status()
+
+
 # ── Health ─────────────────────────────────────────────────────────────────────
 
 def get_health() -> dict:
@@ -182,3 +188,8 @@ def create_project(name: str, description: str = None) -> dict:
     if description:
         body["description"] = description
     return _post("/projects", body)
+
+
+def delete_project(project_id: str) -> dict:
+    _delete(f"/projects/{project_id}")
+    return {"deleted": True, "project_id": project_id}

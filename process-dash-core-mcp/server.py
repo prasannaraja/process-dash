@@ -314,6 +314,21 @@ TOOLS = [
             "required": ["name"],
         },
     ),
+    types.Tool(
+        name="delete_project",
+        description=(
+            "Permanently delete a project by its ID. "
+            "Always call list_projects first to confirm the project ID and name. "
+            "Ask the user to confirm before deleting."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "projectId": {"type": "string", "description": "UUID of the project to delete"},
+            },
+            "required": ["projectId"],
+        },
+    ),
 ]
 
 
@@ -415,6 +430,11 @@ async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
                 return _ok(api.create_project(
                     name=arguments["name"],
                     description=arguments.get("description"),
+                ))
+
+            case "delete_project":
+                return _ok(api.delete_project(
+                    project_id=arguments["projectId"],
                 ))
 
             case _:
