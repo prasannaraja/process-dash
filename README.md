@@ -5,6 +5,8 @@ Process Dash is a lightweight work observability app for tracking daily intents,
 It includes:
 - A FastAPI backend with an event-log model (SQLite via SQLModel)
 - A React + Vite frontend for daily and sprint workflows
+- An MCP server that exposes the core API as tools for LLM consumption
+- An LLM copilot that uses the MCP to interact with your work data conversationally
 - Docker Compose for running both services together
 - Markdown export for daily logs
 
@@ -28,18 +30,33 @@ It includes:
 
 - Backend: FastAPI, SQLModel, Alembic, SQLite
 - Frontend: React 19, TypeScript, Vite, Tailwind CSS
+- MCP Server: exposes core API as MCP tools for LLM agents
+- Copilot: LLM agent powered by the MCP layer
 - Tooling: Pytest, ESLint, Docker, Docker Compose
 
 ## Repository Layout
 
 ```text
-process-dash-api/          FastAPI app, models, routers, services, tests
+process-dash-core-api/      FastAPI app, models, routers, services, tests
+process-dash-core-mcp/      MCP server — wraps core API as tools for LLM agents
+process-dash-copilot/       LLM copilot — uses the MCP to interact with work data
 process-dash-frontend/beta/ React/Vite frontend
 process-dash-docs/          Product and API documentation
 process-dash-data/          SQLite storage (mounted in Docker)
 process-dash-backups/       Manual backup copies (mounted in Docker)
 scripts/                    Convenience run scripts
 ```
+
+### Architecture Overview
+
+```
+process-dash-copilot  ──(MCP)──▶  process-dash-core-mcp  ──(HTTP)──▶  process-dash-core-api
+                                                                               │
+process-dash-frontend  ──────────────────────────────────(HTTP)──────────────▶│
+                                                                         SQLite (process-dash-data)
+```
+
+The copilot and frontend both talk to the same core API — the copilot via the MCP layer, the frontend directly over HTTP.
 
 ## Quick Start (Docker)
 
@@ -110,7 +127,7 @@ Copy-Item .\backups\workobs-20260309-120000.sqlite .\data\workobs.sqlite -Force
 ### 1) Backend
 
 ```bash
-cd process-dash-api
+cd process-dash-core-api
 python -m venv venv
 # Windows PowerShell
 ./venv/Scripts/Activate.ps1
@@ -176,7 +193,7 @@ Durations are stored as minutes and reported with approximate bucket labels (for
 Backend tests:
 
 ```bash
-cd process-dash-api
+cd process-dash-core-api
 python -m pytest -q
 ```
 
@@ -194,7 +211,7 @@ python -m pytest -q
 Run this once if your existing data contains `weekly_summary_saved` events created before the sprint-first cutover:
 
 ```bash
-cd process-dash-api
+cd process-dash-core-api
 python ..\scripts\backfill_weekly_summaries_to_sprints.py
 ```
 
@@ -202,6 +219,7 @@ python ..\scripts\backfill_weekly_summaries_to_sprints.py
 
 - Sprint export endpoint exists (`POST /export/sprint/{sprintId}`) but is not implemented yet.
 - Frontend contains default Vite scaffold README in `frontend/beta/README.md`; root README is the primary project guide.
+- `process-dash-core-mcp` and `process-dash-copilot` are scaffolded but not yet implemented.
 
 ## Viewing Sprint Progress
 

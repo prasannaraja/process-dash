@@ -1,12 +1,12 @@
 services:
   backend:
     build:
-      context: ./process-dash-api
+      context: ./process-dash-core-api
       dockerfile: Dockerfile
     ports:
       - "8001:8000"
     volumes:
-      - ./process-dash-api:/code
+      - ./process-dash-core-api:/code
       - ./process-dash-data:/data
       - ./process-dash-backups:/backups
     environment:
