@@ -1,0 +1,13 @@
+# Interruption Codes
+
+Use ONLY these:
+
+- MEETING
+- DEPENDENCY
+- CONTEXT_SWITCH
+- FAMILY
+- EMOTIONAL_LOAD
+- TECH_ISSUE
+- UNPLANNED_REQUEST
+
+Consistency > precision.
