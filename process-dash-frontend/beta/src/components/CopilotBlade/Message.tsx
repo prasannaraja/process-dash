@@ -1,5 +1,4 @@
 import { useState } from "react";
-import ReactMarkdown from "react-markdown";
 import { ChatMessage } from "./api";
 import { ToolCallDetail } from "./ToolCallDetail";
 
@@ -7,98 +6,191 @@ interface Props {
   message: ChatMessage;
 }
 
-// Markdown component overrides — dark theme, compact for chat
-const mdComponents = {
-  p: ({ children }: { children?: React.ReactNode }) => (
-    <p style={{ margin: "0 0 8px", lineHeight: 1.6 }}>{children}</p>
-  ),
-  h1: ({ children }: { children?: React.ReactNode }) => (
-    <h1 style={{ fontSize: 15, fontWeight: 700, margin: "12px 0 6px", color: "var(--text)" }}>{children}</h1>
-  ),
-  h2: ({ children }: { children?: React.ReactNode }) => (
-    <h2 style={{ fontSize: 14, fontWeight: 600, margin: "10px 0 5px", color: "var(--text)" }}>{children}</h2>
-  ),
-  h3: ({ children }: { children?: React.ReactNode }) => (
-    <h3 style={{ fontSize: 13, fontWeight: 600, margin: "8px 0 4px", color: "var(--text-2)" }}>{children}</h3>
-  ),
-  ul: ({ children }: { children?: React.ReactNode }) => (
-    <ul style={{ margin: "4px 0 8px", paddingLeft: 18, lineHeight: 1.7 }}>{children}</ul>
-  ),
-  ol: ({ children }: { children?: React.ReactNode }) => (
-    <ol style={{ margin: "4px 0 8px", paddingLeft: 18, lineHeight: 1.7 }}>{children}</ol>
-  ),
-  li: ({ children }: { children?: React.ReactNode }) => (
-    <li style={{ marginBottom: 2 }}>{children}</li>
-  ),
-  strong: ({ children }: { children?: React.ReactNode }) => (
-    <strong style={{ fontWeight: 600, color: "var(--text)" }}>{children}</strong>
-  ),
-  em: ({ children }: { children?: React.ReactNode }) => (
-    <em style={{ color: "var(--text-2)" }}>{children}</em>
-  ),
-  code: ({ inline, children }: { inline?: boolean; children?: React.ReactNode }) =>
-    inline ? (
-      <code
-        style={{
-          fontFamily: '"JetBrains Mono", "SF Mono", ui-monospace, monospace',
-          fontSize: 11,
-          background: "var(--surface-3)",
-          border: "1px solid var(--border)",
-          borderRadius: 3,
-          padding: "1px 5px",
-          color: "var(--accent)",
-        }}
-      >
-        {children}
-      </code>
-    ) : (
-      <code
-        style={{
-          display: "block",
-          fontFamily: '"JetBrains Mono", "SF Mono", ui-monospace, monospace',
-          fontSize: 11,
-          background: "var(--surface-3)",
-          border: "1px solid var(--border)",
-          borderRadius: 6,
-          padding: "10px 12px",
-          overflowX: "auto",
-          color: "var(--text-2)",
-          lineHeight: 1.6,
-          margin: "6px 0",
-        }}
-      >
-        {children}
-      </code>
-    ),
-  pre: ({ children }: { children?: React.ReactNode }) => (
-    <pre style={{ margin: "6px 0", overflow: "auto" }}>{children}</pre>
-  ),
-  blockquote: ({ children }: { children?: React.ReactNode }) => (
-    <blockquote
-      style={{
-        borderLeft: "3px solid var(--accent)",
-        paddingLeft: 10,
-        margin: "6px 0",
-        color: "var(--text-2)",
-      }}
-    >
-      {children}
-    </blockquote>
-  ),
-  hr: () => (
-    <hr style={{ border: "none", borderTop: "1px solid var(--border)", margin: "10px 0" }} />
-  ),
-  a: ({ href, children }: { href?: string; children?: React.ReactNode }) => (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      style={{ color: "var(--accent)", textDecoration: "underline" }}
-    >
-      {children}
-    </a>
-  ),
-};
+// ── Inline markdown renderer (zero-dep) ───────────────────────────────────────
+// Handles: headers, bold, italic, inline code, fenced code blocks, bullet lists,
+// ordered lists, blockquotes, horizontal rules, links, and paragraphs.
+
+function renderInline(text: string): React.ReactNode[] {
+  // Split on bold, italic, inline code, links
+  const parts: React.ReactNode[] = [];
+  let remaining = text;
+  let key = 0;
+
+  while (remaining.length > 0) {
+    // Inline code: `...`
+    const codeMatch = remaining.match(/^(.*?)`([^`]+)`(.*)/s);
+    // Bold: **...**
+    const boldMatch = remaining.match(/^(.*?)\*\*(.+?)\*\*(.*)/s);
+    // Italic: *...*
+    const italicMatch = remaining.match(/^(.*?)\*(.+?)\*(.*)/s);
+    // Link: [text](url)
+    const linkMatch = remaining.match(/^(.*?)\[(.+?)\]\((.+?)\)(.*)/s);
+
+    // Pick the match that starts earliest
+    const candidates = [
+      codeMatch   && { type: "code",   before: codeMatch[1],   inner: codeMatch[2],   after: codeMatch[3] },
+      boldMatch   && { type: "bold",   before: boldMatch[1],   inner: boldMatch[2],   after: boldMatch[3] },
+      italicMatch && { type: "italic", before: italicMatch[1], inner: italicMatch[2], after: italicMatch[3] },
+      linkMatch   && { type: "link",   before: linkMatch[1],   inner: linkMatch[2],   after: linkMatch[4], href: linkMatch[3] },
+    ].filter(Boolean) as { type: string; before: string; inner: string; after: string; href?: string }[];
+
+    if (candidates.length === 0) {
+      parts.push(remaining);
+      break;
+    }
+
+    // Pick earliest (shortest "before")
+    const best = candidates.reduce((a, b) => a.before.length <= b.before.length ? a : b);
+
+    if (best.before) parts.push(best.before);
+
+    if (best.type === "code") {
+      parts.push(
+        <code key={key++} style={{
+          fontFamily: '"JetBrains Mono","SF Mono",ui-monospace,monospace',
+          fontSize: 11, background: "var(--surface-3)",
+          border: "1px solid var(--border)", borderRadius: 3,
+          padding: "1px 5px", color: "var(--accent)",
+        }}>{best.inner}</code>
+      );
+    } else if (best.type === "bold") {
+      parts.push(<strong key={key++} style={{ fontWeight: 600, color: "var(--text)" }}>{best.inner}</strong>);
+    } else if (best.type === "italic") {
+      parts.push(<em key={key++} style={{ color: "var(--text-2)" }}>{best.inner}</em>);
+    } else if (best.type === "link") {
+      parts.push(
+        <a key={key++} href={best.href} target="_blank" rel="noopener noreferrer"
+          style={{ color: "var(--accent)", textDecoration: "underline" }}>{best.inner}</a>
+      );
+    }
+
+    remaining = best.after;
+  }
+
+  return parts;
+}
+
+function MarkdownContent({ content }: { content: string }) {
+  const lines = content.split("\n");
+  const nodes: React.ReactNode[] = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+
+    // Fenced code block
+    if (line.startsWith("```")) {
+      const lang = line.slice(3).trim();
+      const codeLines: string[] = [];
+      i++;
+      while (i < lines.length && !lines[i].startsWith("```")) {
+        codeLines.push(lines[i]);
+        i++;
+      }
+      nodes.push(
+        <pre key={i} style={{
+          margin: "6px 0", background: "var(--surface-3)",
+          border: "1px solid var(--border)", borderRadius: 6, overflow: "auto",
+        }}>
+          <code data-lang={lang} style={{
+            display: "block", padding: "10px 12px",
+            fontFamily: '"JetBrains Mono","SF Mono",ui-monospace,monospace',
+            fontSize: 11, color: "var(--text-2)", lineHeight: 1.6,
+          }}>{codeLines.join("\n")}</code>
+        </pre>
+      );
+      i++; // skip closing ```
+      continue;
+    }
+
+    // Horizontal rule
+    if (/^---+$/.test(line.trim())) {
+      nodes.push(<hr key={i} style={{ border: "none", borderTop: "1px solid var(--border)", margin: "10px 0" }} />);
+      i++;
+      continue;
+    }
+
+    // Heading
+    const hMatch = line.match(/^(#{1,3})\s+(.*)/);
+    if (hMatch) {
+      const level = hMatch[1].length;
+      const sz = [15, 14, 13][level - 1];
+      const fw = [700, 600, 600][level - 1];
+      const Tag = `h${level}` as "h1" | "h2" | "h3";
+      nodes.push(
+        <Tag key={i} style={{ fontSize: sz, fontWeight: fw, margin: "12px 0 5px", color: "var(--text)" }}>
+          {renderInline(hMatch[2])}
+        </Tag>
+      );
+      i++;
+      continue;
+    }
+
+    // Blockquote
+    if (line.startsWith("> ")) {
+      nodes.push(
+        <blockquote key={i} style={{
+          borderLeft: "3px solid var(--accent)", paddingLeft: 10,
+          margin: "6px 0", color: "var(--text-2)",
+        }}>
+          {renderInline(line.slice(2))}
+        </blockquote>
+      );
+      i++;
+      continue;
+    }
+
+    // Unordered list — collect consecutive bullet lines
+    if (/^[-*]\s/.test(line)) {
+      const items: string[] = [];
+      while (i < lines.length && /^[-*]\s/.test(lines[i])) {
+        items.push(lines[i].replace(/^[-*]\s/, ""));
+        i++;
+      }
+      nodes.push(
+        <ul key={i} style={{ margin: "4px 0 8px", paddingLeft: 18, lineHeight: 1.7 }}>
+          {items.map((it, j) => (
+            <li key={j} style={{ marginBottom: 2 }}>{renderInline(it)}</li>
+          ))}
+        </ul>
+      );
+      continue;
+    }
+
+    // Ordered list
+    if (/^\d+\.\s/.test(line)) {
+      const items: string[] = [];
+      while (i < lines.length && /^\d+\.\s/.test(lines[i])) {
+        items.push(lines[i].replace(/^\d+\.\s/, ""));
+        i++;
+      }
+      nodes.push(
+        <ol key={i} style={{ margin: "4px 0 8px", paddingLeft: 18, lineHeight: 1.7 }}>
+          {items.map((it, j) => (
+            <li key={j} style={{ marginBottom: 2 }}>{renderInline(it)}</li>
+          ))}
+        </ol>
+      );
+      continue;
+    }
+
+    // Empty line → skip
+    if (line.trim() === "") {
+      i++;
+      continue;
+    }
+
+    // Paragraph
+    nodes.push(
+      <p key={i} style={{ margin: "0 0 8px", lineHeight: 1.6 }}>
+        {renderInline(line)}
+      </p>
+    );
+    i++;
+  }
+
+  return <>{nodes}</>;
+}
 
 // ── Copy button ───────────────────────────────────────────────────────────────
 
@@ -108,19 +200,16 @@ function CopyButton({ text }: { text: string }) {
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
     } catch {
-      // fallback for older browsers
       const el = document.createElement("textarea");
       el.value = text;
       document.body.appendChild(el);
       el.select();
       document.execCommand("copy");
       document.body.removeChild(el);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
     }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
@@ -128,24 +217,13 @@ function CopyButton({ text }: { text: string }) {
       onClick={handleCopy}
       title="Copy as markdown"
       style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 4,
-        fontSize: 11,
-        color: copied ? "var(--green)" : "var(--text-3)",
-        background: "transparent",
-        border: "none",
-        cursor: "pointer",
-        padding: "2px 0",
-        fontFamily: "inherit",
-        transition: "color 0.15s",
+        display: "flex", alignItems: "center", gap: 4,
+        fontSize: 11, color: copied ? "var(--green)" : "var(--text-3)",
+        background: "transparent", border: "none", cursor: "pointer",
+        padding: "2px 0", fontFamily: "inherit", transition: "color 0.15s",
       }}
-      onMouseEnter={(e) => {
-        if (!copied) (e.currentTarget as HTMLElement).style.color = "var(--text-2)";
-      }}
-      onMouseLeave={(e) => {
-        if (!copied) (e.currentTarget as HTMLElement).style.color = "var(--text-3)";
-      }}
+      onMouseEnter={(e) => { if (!copied) (e.currentTarget as HTMLElement).style.color = "var(--text-2)"; }}
+      onMouseLeave={(e) => { if (!copied) (e.currentTarget as HTMLElement).style.color = "var(--text-3)"; }}
     >
       {copied ? (
         <>
@@ -195,9 +273,7 @@ export function Message({ message }: Props) {
           <div style={{ whiteSpace: "pre-wrap" }}>{message.content}</div>
         ) : (
           <div style={{ minWidth: 0 }}>
-            <ReactMarkdown components={mdComponents as any}>
-              {message.content}
-            </ReactMarkdown>
+            <MarkdownContent content={message.content} />
           </div>
         )}
 
@@ -205,17 +281,11 @@ export function Message({ message }: Props) {
           <ToolCallDetail toolCalls={message.toolCalls} />
         )}
 
-        {/* Copy button — visible on hover for assistant messages */}
         {!isUser && (
-          <div
-            style={{
-              marginTop: 6,
-              display: "flex",
-              justifyContent: "flex-end",
-              opacity: hovered ? 1 : 0,
-              transition: "opacity 0.15s",
-            }}
-          >
+          <div style={{
+            marginTop: 6, display: "flex", justifyContent: "flex-end",
+            opacity: hovered ? 1 : 0, transition: "opacity 0.15s",
+          }}>
             <CopyButton text={message.content} />
           </div>
         )}
