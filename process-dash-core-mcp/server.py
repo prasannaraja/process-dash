@@ -299,6 +299,21 @@ TOOLS = [
         ),
         inputSchema={"type": "object", "properties": {}},
     ),
+    types.Tool(
+        name="create_project",
+        description=(
+            "Create a new project. Use this when the user names a project that doesn't exist yet. "
+            "Confirm the name with the user before creating."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "name": {"type": "string", "description": "Project name"},
+                "description": {"type": "string", "description": "Optional short description"},
+            },
+            "required": ["name"],
+        },
+    ),
 ]
 
 
@@ -395,6 +410,12 @@ async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
 
             case "list_projects":
                 return _ok(api.list_projects())
+
+            case "create_project":
+                return _ok(api.create_project(
+                    name=arguments["name"],
+                    description=arguments.get("description"),
+                ))
 
             case _:
                 return _err(f"Unknown tool: {name}")

@@ -295,4 +295,22 @@ TOOLS = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "create_project",
+            "description": (
+                "Create a new project. Use this when the user names a project that doesn't exist yet. "
+                "Don't ask the user for a UUID — create the project first, then use its ID."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "description": "Project name"},
+                    "description": {"type": "string", "description": "Optional short description"},
+                },
+                "required": ["name"],
+            },
+        },
+    },
 ]

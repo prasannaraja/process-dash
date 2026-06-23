@@ -175,3 +175,10 @@ def list_projects() -> dict:
 
 def get_project(project_id: str) -> dict:
     return _get(f"/projects/{project_id}")
+
+
+def create_project(name: str, description: str = None) -> dict:
+    body: dict = {"name": name}
+    if description:
+        body["description"] = description
+    return _post("/projects", body)
