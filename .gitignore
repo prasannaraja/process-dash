@@ -29,3 +29,4 @@ dist-ssr/
 # General
 .env
 __pycache__
+*.sqlite
