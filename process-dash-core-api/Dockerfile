@@ -8,9 +8,11 @@ RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
 COPY ./app /code/app
 COPY ./migrations /code/migrations
 COPY ./alembic.ini /code/alembic.ini
+COPY ./migrate.py /code/migrate.py
 COPY ./start.sh /code/start.sh
+RUN chmod +x /code/start.sh
 
 EXPOSE 8000
 
 # start.sh runs `alembic upgrade head` then starts uvicorn
-CMD ["sh", "start.sh"]
+CMD ["sh", "/code/start.sh"]
