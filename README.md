@@ -242,3 +242,7 @@ It now also supports:
 - `process-dash-docs/time-capture-and-reporting.md`
 - `process-dash-docs/frontend-spec.md`
 - `process-dash-docs/db-schema.md`
+
+## update
+
+- basically the intention of the app to capture the work i do for the sprint by capture the user stories and while working how i block them and what are the blocks i do and interuption during the blocks due to meetings and family interuption etc. i also want to capture the detours and adhoc works given to me, i might forget updating the detour at the right momemnt, there is a good chance of me updatating the detour at later stage to balance the data upate. finanly i will be communicating all of em throught the copilot chat session and copilot should be able to communicate to mcp and retrieve necessary data to understand and identify the correct block/userstore/sprint and update the correct record accurately and help me prepare stand up updates and prepare retro points etc. thats the over all idea. i want to get montly report or yearly as well. i may be working on multiple projects in a year so there is many projects as well. update the plan that at later stage i will be capture my organisation goals to the app the match them at work with my task etc. please capture these point and plan wisely. do a deep research for me please. thanks

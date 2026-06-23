@@ -178,28 +178,65 @@ Build `process-dash-llm` Docker service:
 - Expose OpenAI-compatible endpoint on port `11434`
 - Document model selection and GGUF format requirements
 
-### Phase 6 — Expansion 🔜 Future
-- Passive time capture (IDE, Git, calendar signals)
+### Phase 6A — User Stories 🔜 After Copilot
+Add story-level tracking to the sprint workflow:
+- `user_stories` table, full CRUD API
+- Link focus blocks to stories via `storyId`
+- MCP tools: `create_story`, `update_story_status`, `list_stories`
+- Copilot: "start working on [story]", "mark [story] done"
+- Frontend: story list and status board per sprint
+
+### Phase 6B — Detours (Unplanned Work) 🔜 After 6A
+First-class capture of adhoc and unplanned work:
+- `detours` table with `occurredAt` / `loggedAt` separation for retroactive logging
+- Reason codes: `URGENT_BUG`, `MANAGER_REQUEST`, `SUPPORT`, `MEETING_FOLLOWUP`, `OTHER`
+- Copilot: detect detour language, retroactive time resolution, sprint auto-assignment
+- Reports: detour hours visible in stand-up, retro, and sprint rollup
+
+### Phase 6C — Reports 🔜 After 6B
+Structured report generation across all time horizons:
+- Stand-up report: `GET /reports/standup/{date}` — Yesterday / Today / Blockers
+- Sprint retro report: `GET /reports/retro/{sprintId}` — delivery, fragmentation, detours, reflection
+- Monthly report: `GET /reports/monthly/{year}/{month}` — cross-sprint trends
+- Yearly report: `GET /reports/yearly/{year}` — cross-project time split, year in review
+- Copilot: "give me my stand-up", "retro points for this sprint", "how was my year"
+
+### Phase 6D — OKR / Goal Alignment 🔜 Future
+Connect daily work to organisational objectives:
+- `org_goals` table — strategic objectives / OKRs with period dates
+- `goal_alignments` table — many-to-many between stories/detours and goals
+- Copilot: suggest goal alignment from story titles, query time spent per goal
+- Reports: goal alignment summary in monthly and yearly reports
+- See `Plan/Part 6.md` for full design
+
+### Phase 7 — Passive & External Integrations 🔜 Future
 - Sprint export endpoint (currently placeholder)
-- Team-level aggregation
-- External integrations (GitHub commits, CI, calendar)
+- GitHub commit → work attribution
+- Calendar → planned vs actual comparison
+- CI failures → interruption signals
 
 ---
 
 ## 9. Coverage Matrix
 
-| Area          | Status   | Method                                      |
-|---------------|----------|---------------------------------------------|
-| Time          | ✅ Done  | Manual block logging via UI or copilot      |
-| Intents       | ✅ Done  | Daily intent declaration                    |
-| Sprints       | ✅ Done  | Sprint definitions, rollups, summaries      |
-| Projects      | ✅ Done  | Project-level tracking                      |
-| Quality       | ✅ Done  | Interruption reason codes                   |
-| MCP layer     | 🚧 Next  | Tools wrapping core API                     |
-| Copilot       | 🔜 Soon  | LLM agent over MCP                          |
-| LLM hosting   | 🔜 Soon  | llama-cpp or OpenAI-compatible in Docker    |
-| Passive capture | ❌ TBD | IDE/Git/calendar signals                    |
-| Integrations  | ❌ TBD  | Git, CI, calendar, finance                  |
+| Area                   | Status      | Method                                               |
+|------------------------|-------------|------------------------------------------------------|
+| Time / blocks          | ✅ Done     | Manual block logging via UI or copilot               |
+| Daily intents          | ✅ Done     | Intent declaration per day                          |
+| Sprints                | ✅ Done     | Sprint definitions, rollups, summaries               |
+| Projects               | ✅ Done     | Multi-project tracking                               |
+| Interruption tracking  | ✅ Done     | Reason codes on blocks                               |
+| MCP layer              | 🚧 Next     | Tools wrapping core API                              |
+| Copilot                | 🔜 Soon     | LLM agent over MCP with context resolution           |
+| LLM hosting            | 🔜 Soon     | llama-cpp or OpenAI-compatible in Docker             |
+| User stories           | 🔜 Phase 6A | Story CRUD linked to sprints and blocks              |
+| Detours / adhoc work   | 🔜 Phase 6B | Unplanned work with retroactive logging              |
+| Stand-up reports       | 🔜 Phase 6C | Copilot-generated daily summary                     |
+| Retro reports          | 🔜 Phase 6C | Sprint retrospective auto-draft                     |
+| Monthly / yearly       | 🔜 Phase 6C | Cross-sprint and cross-project rollups               |
+| OKR / goal alignment   | 🔜 Phase 6D | Tag work to org objectives, query time by goal       |
+| Passive capture        | ❌ Future   | IDE/Git/calendar signals                             |
+| External integrations  | ❌ Future   | GitHub, CI, calendar                                 |
 
 ---
 
@@ -209,3 +246,4 @@ Build `process-dash-llm` Docker service:
 > First make it clear, then make it easy, then make it fast.
 
 The event log is clear. The UI makes it easy. The copilot makes it fast.
+The stories and detours make it honest. The reports make it useful. The OKRs make it meaningful.
