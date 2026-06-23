@@ -149,6 +149,24 @@ TOOLS = [
         },
     ),
     types.Tool(
+        name="create_sprint",
+        description=(
+            "Create a new sprint. Ask the user for a name, start date, and duration if not provided. "
+            "Duration is in days (typical values: 7, 14). "
+            "Always confirm the details before calling this tool."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "name": {"type": "string", "description": "Sprint name, e.g. 'Sprint 12' or 'Auth & Payments'"},
+                "startDate": {"type": "string", "description": "Start date in YYYY-MM-DD format"},
+                "durationDays": {"type": "integer", "description": "Length of the sprint in days (e.g. 7 or 14)"},
+                "projectId": {"type": "string", "description": "Optional project UUID to associate the sprint with"},
+            },
+            "required": ["name", "startDate", "durationDays"],
+        },
+    ),
+    types.Tool(
         name="list_sprints",
         description=(
             "List sprint definitions. Optionally filter by projectId. "
@@ -333,6 +351,14 @@ async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
 
             case "end_recovery":
                 return _ok(api.end_recovery(arguments["blockId"], arguments["durationMinutes"]))
+
+            case "create_sprint":
+                return _ok(api.create_sprint(
+                    name=arguments["name"],
+                    start_date=arguments["startDate"],
+                    duration_days=arguments["durationDays"],
+                    project_id=arguments.get("projectId"),
+                ))
 
             case "list_sprints":
                 return _ok(api.list_sprints(project_id=arguments.get("projectId")))
