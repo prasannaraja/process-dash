@@ -1,30 +1,47 @@
 # Process Dash
 
-Process Dash is a lightweight work observability app for tracking daily intents, focus blocks, interruptions, and recovery breaks.
+Process Dash is a personal work observability system built for engineers who want to understand how they actually spend their time across sprints, projects, and a career.
+
+The core idea is simple: you commit user stories to a sprint, work on them in focused blocks, get interrupted by meetings and life, occasionally get pulled into unplanned detours — and at the end of a sprint you need to account for all of it honestly. Process Dash captures this full picture, including work logged retroactively when you didn't get a chance to record it in the moment.
+
+The primary interface is a conversational AI copilot. Rather than navigating a UI to log every block and interruption, you tell the copilot what happened in natural language and it writes to the right records. It can also prepare your stand-up update, draft your sprint retro points, and pull monthly or yearly reports across all your projects.
+
+All data stays local. Nothing leaves your machine.
 
 It includes:
-- A FastAPI backend with an event-log model (SQLite via SQLModel)
-- A React + Vite frontend for daily and sprint workflows
+- A FastAPI backend with an append-only event-log model (SQLite via SQLModel)
+- A React + Vite frontend for daily, sprint, and project workflows
 - An MCP server that exposes the core API as tools for LLM consumption
 - An LLM copilot that uses the MCP to interact with your work data conversationally
-- Docker Compose for running both services together
-- Markdown export for daily logs
+- Docker Compose for running the full stack together
+- Markdown export for daily logs and sprint summaries
 
 ## What It Tracks
 
-- Daily intents (up to 5)
-- Intent blocks (start, interrupt, finish)
-- Interruption reasons (`MEETING`, `DEPENDENCY`, `CONTEXT_SWITCH`, etc.)
-- Recovery blocks (`COFFEE`, `LUNCH`)
-- Day and sprint rollups:
-  - total blocks
-  - interrupted blocks
-  - fragmentation rate
-  - focus blocks
-  - active and recovery time labels
-- Sprint reflection (top fragmenters, non-performance issues, next-sprint change)
-- Sprint summaries history view (all saved sprint summaries in one place)
-- Sprint definitions with editable start date and duration (7, 14, or custom N days)
+**Sprint work**
+- User stories committed to a sprint, with status lifecycle (`TODO → IN_PROGRESS → DONE → CARRIED_OVER`)
+- Focus blocks per story — start, interrupt, end — with actual duration and outcome
+- Interruption reasons on each block (`MEETING`, `DEPENDENCY`, `CONTEXT_SWITCH`, `FAMILY`, `TECH_ISSUE`, etc.)
+- Recovery breaks (`COFFEE`, `LUNCH`)
+
+**Unplanned work**
+- Detours and adhoc tasks given mid-sprint, with the reason they arose (`URGENT_BUG`, `MANAGER_REQUEST`, `SUPPORT`, etc.)
+- Retroactive logging — if you didn't log a detour in the moment, you can describe it to the copilot later and it records when it actually happened, not just when you remembered to log it
+
+**Rollups and reports**
+- Day view: blocks, interruptions, todos, fragmentation rate, focus time
+- Sprint rollup: delivery vs commitment, unplanned load, top fragmenters
+- Stand-up update: generated on demand from the day's actual events
+- Sprint retrospective draft: delivery, fragmentation, detours, and reflection prompts
+- Monthly and yearly reports across all projects
+
+**Projects**
+- Multiple concurrent projects, each with their own sprints, team members, contacts, and GitHub activity
+- All reports filterable by project
+
+**Future: organisational goal alignment**
+- Capture your organisation's objectives and tag stories to them
+- Query how much of your time maps to each strategic goal across a quarter or year
 
 ## Tech Stack
 
@@ -243,6 +260,3 @@ It now also supports:
 - `process-dash-docs/frontend-spec.md`
 - `process-dash-docs/db-schema.md`
 
-## update
-
-- basically the intention of the app to capture the work i do for the sprint by capture the user stories and while working how i block them and what are the blocks i do and interuption during the blocks due to meetings and family interuption etc. i also want to capture the detours and adhoc works given to me, i might forget updating the detour at the right momemnt, there is a good chance of me updatating the detour at later stage to balance the data upate. finanly i will be communicating all of em throught the copilot chat session and copilot should be able to communicate to mcp and retrieve necessary data to understand and identify the correct block/userstore/sprint and update the correct record accurately and help me prepare stand up updates and prepare retro points etc. thats the over all idea. i want to get montly report or yearly as well. i may be working on multiple projects in a year so there is many projects as well. update the plan that at later stage i will be capture my organisation goals to the app the match them at work with my task etc. please capture these point and plan wisely. do a deep research for me please. thanks
