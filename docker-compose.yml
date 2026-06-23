@@ -32,6 +32,8 @@ services:
       - "5051:5173"
     environment:
       - VITE_API_BASE=http://localhost:8001/api
+      # Browser calls copilot directly (CORS is open on port 3200)
+      - VITE_COPILOT_BASE=http://localhost:3200
     depends_on:
       backend:
         condition: service_healthy
@@ -65,8 +67,9 @@ services:
   # ── Copilot ─────────────────────────────────────────────────────────────────
   # FastAPI chat service — POST /chat with {message, sessionId}.
   # Set LLM_BASE_URL + LLM_MODEL + LLM_API_KEY via a .env file or environment.
-  # Option A: Ollama — uncomment the ollama service below, set LLM_BASE_URL=http://ollama:11434/v1
-  # Option B: Any OpenAI-compatible cloud endpoint — set LLM_BASE_URL + LLM_API_KEY
+  # Option A: llama.cpp local container — set LLM_BASE_URL=http://llama_cpp:8080/v1
+  # Option B: Ollama — uncomment the ollama service below, set LLM_BASE_URL=http://ollama:11434/v1
+  # Option C: Any OpenAI-compatible cloud endpoint — set LLM_BASE_URL + LLM_API_KEY
   copilot:
     build:
       # Context is repo root so Dockerfile can reach process-dash-core-mcp/api_client.py
@@ -75,11 +78,13 @@ services:
     ports:
       - "3200:3200"
     environment:
+      # Use Docker service names for intra-container calls
       - CORE_API_BASE_URL=http://backend:8000/api
       - MCP_SERVER_URL=http://mcp:3100
-      - LLM_BASE_URL=${LLM_BASE_URL:-http://ollama:11434/v1}
-      - LLM_MODEL=${LLM_MODEL:-llama3}
-      - LLM_API_KEY=${LLM_API_KEY:-ollama}
+      # LLM runs on the host — use host.docker.internal to reach it from inside Docker
+      - LLM_BASE_URL=${LLM_BASE_URL:-http://host.docker.internal:8080/v1}
+      - LLM_MODEL=${LLM_MODEL:-local-model}
+      - LLM_API_KEY=${LLM_API_KEY:-none}
       - PORT=3200
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:3200/health')"]
@@ -95,18 +100,17 @@ services:
     networks:
       - process-dash-net
 
-  # ── Ollama (optional local LLM) ─────────────────────────────────────────────
-  # Uncomment to run a local model. After first `docker compose up`, pull a model:
-  #   docker exec process-dash-ollama ollama pull llama3
-  # Then set LLM_BASE_URL=http://ollama:11434/v1 and LLM_MODEL=llama3 in .env
+  # ── llama.cpp (optional local LLM) ────────────────────────────────────────────
+  # Uncomment to run llama.cpp locally. Example with the official server image:
+  #   docker compose up -d llama_cpp
+  #   docker exec process-dash-llama_cpp llama serve -hf lmstudio-community/gpt-oss-20b-GGUF:MXFP4
+  # Then set LLM_BASE_URL=http://llama_cpp:8080/v1 and LLM_MODEL=<model-name> in .env
   #
-  # ollama:
-  #   image: ollama/ollama:latest
-  #   container_name: process-dash-ollama
+  # llama_cpp:
+  #   image: ghcr.io/ggerganov/llama.cpp:server
+  #   container_name: process-dash-llama_cpp
   #   ports:
-  #     - "11434:11434"
-  #   volumes:
-  #     - ollama_data:/root/.ollama
+  #     - "8080:8080"
   #   networks:
   #     - process-dash-net
 
