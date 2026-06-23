@@ -9,6 +9,9 @@ import json
 import os
 from typing import Any
 
+from dotenv import load_dotenv
+load_dotenv()  # loads process-dash-copilot/.env when running outside Docker
+
 from openai import OpenAI
 
 from app.context import build_system_prompt

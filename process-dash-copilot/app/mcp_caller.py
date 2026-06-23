@@ -9,17 +9,27 @@ HTTP fallback (CORE_API_BASE_URL must point at the running core API).
 
 import json
 import os
+import re
 import httpx
 
 MCP_SERVER_URL = os.environ.get("MCP_SERVER_URL", "").rstrip("/")
 CORE_API_BASE_URL = os.environ.get("CORE_API_BASE_URL", "http://localhost:8000/api")
 
+
+def _to_snake(key: str) -> str:
+    """Convert camelCase or PascalCase key to snake_case."""
+    return re.sub(r"(?<!^)(?=[A-Z])", "_", key).lower()
+
+
+def _snake_args(args: dict) -> dict:
+    """Convert all dict keys from camelCase to snake_case."""
+    return {_to_snake(k): v for k, v in args.items()}
+
+
 # ── Direct HTTP fallback (used when MCP_SERVER_URL is empty) ──────────────────
 
 def _direct(name: str, arguments: dict):
     """Dispatch a tool call directly to the core API without going through MCP."""
-    # Import api_client from the MCP package directory. In Docker, both services
-    # share the same codebase mount; locally, we duplicate the client inline here.
     import sys, importlib.util
     mcp_dir = os.path.join(os.path.dirname(__file__), "..", "..", "process-dash-core-mcp")
     spec = importlib.util.spec_from_file_location(
@@ -30,7 +40,8 @@ def _direct(name: str, arguments: dict):
         spec.loader.exec_module(mod)  # type: ignore
         fn = getattr(mod, name, None)
         if fn:
-            return fn(**{k: v for k, v in arguments.items()})
+            # LLM sends camelCase keys; api_client functions use snake_case params
+            return fn(**_snake_args(arguments))
 
     raise RuntimeError(f"No direct fallback for tool '{name}'")
 

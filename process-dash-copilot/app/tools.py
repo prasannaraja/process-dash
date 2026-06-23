@@ -131,6 +131,26 @@ TOOLS = [
     {
         "type": "function",
         "function": {
+            "name": "create_sprint",
+            "description": (
+                "Create a new sprint. Confirm name, start date, and duration with the user before calling. "
+                "Typical durations: 7 days (1 week) or 14 days (2 weeks)."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "description": "Sprint name, e.g. 'Sprint 12'"},
+                    "startDate": {"type": "string", "description": "Start date YYYY-MM-DD"},
+                    "durationDays": {"type": "integer", "description": "Length in days (e.g. 7 or 14)"},
+                    "projectId": {"type": "string", "description": "Optional project UUID"},
+                },
+                "required": ["name", "startDate", "durationDays"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "list_sprints",
             "description": (
                 "List sprint definitions. Call this to find the current sprint ID "
