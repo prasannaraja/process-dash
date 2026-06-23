@@ -1,5 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import { api, type SprintDefinition, type SprintSummaryItem } from "../api/client";
+import {
+    Badge,
+    Button,
+    Card,
+    Divider,
+    EmptyState,
+    Input,
+    Loading,
+    MetricCard,
+    PageHeader,
+    Section,
+    Select,
+} from "../components/ui";
 
 export default function SprintSummaries() {
     const [sprints, setSprints] = useState<SprintDefinition[]>([]);
@@ -121,192 +134,495 @@ export default function SprintSummaries() {
         }
     };
 
-    if (loading) {
-        return <div className="p-8">Loading sprint summaries...</div>;
-    }
+    if (loading) return <Loading text="Loading sprint summaries…" />;
 
     return (
-        <div className="p-4 max-w-5xl mx-auto space-y-6 pb-16">
-            <header className="space-y-2">
-                <h1 className="text-2xl font-bold">Sprint Summaries</h1>
-                <p className="text-gray-600 text-sm">
-                    Review all saved sprint reflections and compare progress over time.
-                </p>
-            </header>
+        <div style={{ padding: "28px 32px", maxWidth: 960, margin: "0 auto", paddingBottom: 64 }}>
+            <PageHeader
+                title="Sprint Summaries"
+                sub="Review all saved sprint reflections and compare progress over time."
+            />
 
-            {error && <div className="bg-red-50 border border-red-100 text-red-700 p-3 rounded">{error}</div>}
-
-            <section className="bg-gray-50 border rounded p-4 space-y-3">
-                <h2 className="font-semibold">Create Sprint</h2>
-                <div className="grid md:grid-cols-4 gap-3">
-                    <input
-                        className="border p-2 rounded"
-                        placeholder="Sprint name"
-                        value={newName}
-                        onChange={(e) => setNewName(e.target.value)}
-                    />
-                    <input
-                        type="date"
-                        className="border p-2 rounded"
-                        value={newStartDate}
-                        onChange={(e) => setNewStartDate(e.target.value)}
-                    />
-                    <select
-                        className="border p-2 rounded"
-                        value={newDurationDays}
-                        onChange={(e) => setNewDurationDays(Number(e.target.value))}
-                    >
-                        <option value={7}>7 days</option>
-                        <option value={14}>14 days</option>
-                        <option value={21}>21 days</option>
-                        <option value={28}>28 days</option>
-                    </select>
-                    <button onClick={handleCreateSprint} className="bg-blue-600 text-white px-3 py-2 rounded">
-                        Create
-                    </button>
+            {error && (
+                <div
+                    style={{
+                        background: "var(--red-bg)",
+                        border: "1px solid rgba(248,113,113,0.2)",
+                        color: "var(--red)",
+                        padding: "12px 16px",
+                        borderRadius: 8,
+                        fontSize: 13,
+                        marginBottom: 20,
+                    }}
+                >
+                    {error}
                 </div>
-            </section>
+            )}
 
-            <section className="bg-white border rounded p-4 space-y-3">
-                <h2 className="font-semibold">Configured Sprints</h2>
-                {sprints.length === 0 ? (
-                    <p className="text-sm text-gray-500">No sprint definitions yet.</p>
-                ) : (
-                    <div className="space-y-2">
-                        {sprints.map((s) => (
-                            <div key={s.id} className="border rounded p-3 flex justify-between items-center">
-                                <div>
-                                    <div className="font-semibold">{s.name}</div>
-                                    <div className="text-xs text-gray-500">{s.startDate} to {s.endDate} ({s.durationDays} days)</div>
-                                </div>
-                                <button onClick={() => openEdit(s)} className="text-sm underline text-blue-600">Edit</button>
-                            </div>
-                        ))}
+            {/* Create Sprint */}
+            <Section title="Create Sprint">
+                <Card style={{ padding: 16 }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr auto", gap: 10 }}>
+                        <input
+                            placeholder="Sprint name"
+                            value={newName}
+                            onChange={(e) => setNewName(e.target.value)}
+                            style={{
+                                background: "var(--surface-2)",
+                                border: "1px solid var(--border)",
+                                color: "var(--text)",
+                                borderRadius: 6,
+                                padding: "7px 10px",
+                                fontSize: 13,
+                                fontFamily: "inherit",
+                            }}
+                        />
+                        <input
+                            type="date"
+                            value={newStartDate}
+                            onChange={(e) => setNewStartDate(e.target.value)}
+                            style={{
+                                background: "var(--surface-2)",
+                                border: "1px solid var(--border)",
+                                color: "var(--text)",
+                                borderRadius: 6,
+                                padding: "7px 10px",
+                                fontSize: 13,
+                                fontFamily: "inherit",
+                            }}
+                        />
+                        <select
+                            value={newDurationDays}
+                            onChange={(e) => setNewDurationDays(Number(e.target.value))}
+                            style={{
+                                background: "var(--surface-2)",
+                                border: "1px solid var(--border)",
+                                color: "var(--text)",
+                                borderRadius: 6,
+                                padding: "7px 10px",
+                                fontSize: 13,
+                                fontFamily: "inherit",
+                            }}
+                        >
+                            <option value={7}>7 days</option>
+                            <option value={14}>14 days</option>
+                            <option value={21}>21 days</option>
+                            <option value={28}>28 days</option>
+                        </select>
+                        <Button variant="primary" onClick={handleCreateSprint}>
+                            Create
+                        </Button>
                     </div>
-                )}
-            </section>
+                </Card>
+            </Section>
 
+            {/* Configured Sprints */}
+            <Section title="Configured Sprints">
+                <Card style={{ padding: 16 }}>
+                    {sprints.length === 0 ? (
+                        <span style={{ fontSize: 13, color: "var(--text-3)" }}>
+                            No sprint definitions yet.
+                        </span>
+                    ) : (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                            {sprints.map((s) => (
+                                <div
+                                    key={s.id}
+                                    style={{
+                                        display: "flex",
+                                        justifyContent: "space-between",
+                                        alignItems: "center",
+                                        border: "1px solid var(--border)",
+                                        borderRadius: 6,
+                                        padding: "10px 14px",
+                                        background: "var(--surface-2)",
+                                    }}
+                                >
+                                    <div>
+                                        <div
+                                            style={{
+                                                fontSize: 13,
+                                                fontWeight: 500,
+                                                color: "var(--text)",
+                                            }}
+                                        >
+                                            {s.name}
+                                        </div>
+                                        <div
+                                            style={{
+                                                fontSize: 11,
+                                                color: "var(--text-3)",
+                                                marginTop: 2,
+                                            }}
+                                        >
+                                            {s.startDate} to {s.endDate} ({s.durationDays} days)
+                                        </div>
+                                    </div>
+                                    <Button variant="ghost" size="sm" onClick={() => openEdit(s)}>
+                                        Edit
+                                    </Button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </Card>
+            </Section>
+
+            {/* Summaries Table */}
             {items.length === 0 ? (
-                <div className="bg-gray-50 border p-6 rounded text-gray-600">
-                    No sprint summaries yet. Save one from the Week Report page to start tracking progress.
-                </div>
+                <EmptyState
+                    icon="·"
+                    title="No sprint summaries yet"
+                    sub='Save one from the Week Report page to start tracking progress.'
+                />
             ) : (
                 <>
-                    <div className="border rounded overflow-hidden">
-                        <table className="w-full text-sm">
-                            <thead className="bg-gray-50 border-b">
-                                <tr>
-                                    <th className="p-3 text-left">Sprint</th>
-                                    <th className="p-3 text-right">Blocks</th>
-                                    <th className="p-3 text-right">Interrupted</th>
-                                    <th className="p-3 text-right">Fragmentation</th>
-                                    <th className="p-3 text-left">Saved</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {items.map((item) => (
+                    <Section title="Sprint History">
+                        <div
+                            style={{
+                                border: "1px solid var(--border)",
+                                borderRadius: 8,
+                                overflow: "hidden",
+                            }}
+                        >
+                            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                                <thead>
                                     <tr
-                                        key={item.sprintId}
-                                        onClick={() => setSelectedWeek(item.sprintId)}
-                                        className={`border-b cursor-pointer hover:bg-blue-50 ${selectedWeek === item.sprintId ? "bg-blue-50" : ""}`}
+                                        style={{
+                                            background: "var(--surface-2)",
+                                            borderBottom: "1px solid var(--border)",
+                                        }}
                                     >
-                                        <td className="p-3 font-semibold">{item.name || item.sprintId}</td>
-                                        <td className="p-3 text-right">{item.metrics.totalBlocks}</td>
-                                        <td className="p-3 text-right">{item.metrics.interruptedBlocks}</td>
-                                        <td className="p-3 text-right">{Math.round((item.metrics.fragmentationRate || 0) * 100)}%</td>
-                                        <td className="p-3 text-gray-500">{formatSavedAt(item.savedAt)}</td>
+                                        {["Sprint", "Blocks", "Interrupted", "Fragmentation", "Saved"].map(
+                                            (h, i) => (
+                                                <th
+                                                    key={h}
+                                                    style={{
+                                                        padding: "10px 14px",
+                                                        textAlign: i > 0 && i < 4 ? "right" : "left",
+                                                        fontSize: 11,
+                                                        fontWeight: 600,
+                                                        letterSpacing: "0.06em",
+                                                        textTransform: "uppercase",
+                                                        color: "var(--text-3)",
+                                                    }}
+                                                >
+                                                    {h}
+                                                </th>
+                                            )
+                                        )}
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                                </thead>
+                                <tbody>
+                                    {items.map((item) => (
+                                        <tr
+                                            key={item.sprintId}
+                                            onClick={() => setSelectedWeek(item.sprintId)}
+                                            style={{
+                                                borderBottom: "1px solid var(--border)",
+                                                cursor: "pointer",
+                                                background:
+                                                    selectedWeek === item.sprintId
+                                                        ? "var(--accent-bg)"
+                                                        : "transparent",
+                                                transition: "background 0.1s",
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                if (selectedWeek !== item.sprintId)
+                                                    e.currentTarget.style.background = "var(--surface-2)";
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                if (selectedWeek !== item.sprintId)
+                                                    e.currentTarget.style.background = "transparent";
+                                            }}
+                                        >
+                                            <td
+                                                style={{
+                                                    padding: "10px 14px",
+                                                    fontWeight: 500,
+                                                    color:
+                                                        selectedWeek === item.sprintId
+                                                            ? "var(--accent)"
+                                                            : "var(--text)",
+                                                }}
+                                            >
+                                                {item.name || item.sprintId}
+                                            </td>
+                                            <td
+                                                className="mono"
+                                                style={{
+                                                    padding: "10px 14px",
+                                                    textAlign: "right",
+                                                    color: "var(--text-2)",
+                                                }}
+                                            >
+                                                {item.metrics.totalBlocks}
+                                            </td>
+                                            <td
+                                                className="mono"
+                                                style={{
+                                                    padding: "10px 14px",
+                                                    textAlign: "right",
+                                                    color:
+                                                        item.metrics.interruptedBlocks > 0
+                                                            ? "var(--red)"
+                                                            : "var(--text-2)",
+                                                }}
+                                            >
+                                                {item.metrics.interruptedBlocks}
+                                            </td>
+                                            <td
+                                                className="mono"
+                                                style={{
+                                                    padding: "10px 14px",
+                                                    textAlign: "right",
+                                                    color: "var(--text-2)",
+                                                }}
+                                            >
+                                                {Math.round((item.metrics.fragmentationRate || 0) * 100)}%
+                                            </td>
+                                            <td
+                                                style={{
+                                                    padding: "10px 14px",
+                                                    color: "var(--text-3)",
+                                                    fontSize: 12,
+                                                }}
+                                            >
+                                                {formatSavedAt(item.savedAt)}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </Section>
 
                     {selected && (
-                        <section className="bg-white border rounded p-5 space-y-4">
-                            <h2 className="text-xl font-bold">{selected.name || selected.sprintId} Summary</h2>
-                            <p className="text-sm text-gray-500">{selected.startDate || selectedDefinition?.startDate || "-"} to {selected.endDate || selectedDefinition?.endDate || "-"}</p>
+                        <Section title={`${selected.name || selected.sprintId} — Detail`}>
+                            <Card style={{ padding: 20 }}>
+                                <div
+                                    style={{
+                                        fontSize: 12,
+                                        color: "var(--text-3)",
+                                        marginBottom: 16,
+                                    }}
+                                >
+                                    {selected.startDate || selectedDefinition?.startDate || "-"} to{" "}
+                                    {selected.endDate || selectedDefinition?.endDate || "-"}
+                                </div>
 
-                            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                                <MetricCard label="Active" value={selected.metrics.totalActiveLabel || "-"} />
-                                <MetricCard label="Recovery" value={selected.metrics.totalRecoveryLabel || "-"} />
-                                <MetricCard label="Blocks" value={selected.metrics.totalBlocks} />
-                                <MetricCard label="Interrupted" value={selected.metrics.interruptedBlocks} />
-                                <MetricCard label="Focus" value={selected.metrics.focusBlocks} />
-                            </div>
+                                <div
+                                    style={{
+                                        display: "grid",
+                                        gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
+                                        gap: 10,
+                                        marginBottom: 20,
+                                    }}
+                                >
+                                    <MetricCard label="Active" value={selected.metrics.totalActiveLabel || "-"} accent />
+                                    <MetricCard label="Recovery" value={selected.metrics.totalRecoveryLabel || "-"} warn />
+                                    <MetricCard label="Blocks" value={selected.metrics.totalBlocks} />
+                                    <MetricCard label="Interrupted" value={selected.metrics.interruptedBlocks} danger={selected.metrics.interruptedBlocks > 0} />
+                                    <MetricCard label="Focus" value={selected.metrics.focusBlocks} />
+                                </div>
 
-                            <div>
-                                <h3 className="font-semibold">Top Fragmenters</h3>
-                                {selected.topFragmenters.length === 0 ? (
-                                    <p className="text-gray-500 text-sm">No fragmenters recorded.</p>
-                                ) : (
-                                    <div className="flex flex-wrap gap-2 mt-2">
-                                        {selected.topFragmenters.map((f) => (
-                                            <span key={f} className="text-xs bg-red-50 text-red-700 border border-red-200 px-2 py-1 rounded">
-                                                {f}
-                                            </span>
-                                        ))}
+                                <Divider />
+
+                                <div style={{ marginBottom: 16 }}>
+                                    <div
+                                        style={{
+                                            fontSize: 12,
+                                            fontWeight: 600,
+                                            color: "var(--text-2)",
+                                            marginBottom: 8,
+                                        }}
+                                    >
+                                        Top Fragmenters
                                     </div>
-                                )}
-                            </div>
+                                    {selected.topFragmenters.length === 0 ? (
+                                        <span style={{ fontSize: 12, color: "var(--text-3)" }}>
+                                            No fragmenters recorded.
+                                        </span>
+                                    ) : (
+                                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                                            {selected.topFragmenters.map((f) => (
+                                                <Badge key={f} variant="red">
+                                                    {f}
+                                                </Badge>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
 
-                            <div>
-                                <h3 className="font-semibold">Not Performance Issues</h3>
-                                {selected.notPerformanceIssues.length === 0 ? (
-                                    <p className="text-gray-500 text-sm">None documented.</p>
-                                ) : (
-                                    <ul className="list-disc pl-5 text-sm mt-1">
-                                        {selected.notPerformanceIssues.map((issue, idx) => (
-                                            <li key={idx}>{issue}</li>
-                                        ))}
-                                    </ul>
-                                )}
-                            </div>
+                                <div style={{ marginBottom: 16 }}>
+                                    <div
+                                        style={{
+                                            fontSize: 12,
+                                            fontWeight: 600,
+                                            color: "var(--text-2)",
+                                            marginBottom: 6,
+                                        }}
+                                    >
+                                        Not Performance Issues
+                                    </div>
+                                    {selected.notPerformanceIssues.length === 0 ? (
+                                        <span style={{ fontSize: 12, color: "var(--text-3)" }}>
+                                            None documented.
+                                        </span>
+                                    ) : (
+                                        <ul
+                                            style={{
+                                                margin: 0,
+                                                paddingLeft: 18,
+                                                fontSize: 13,
+                                                color: "var(--text-2)",
+                                                lineHeight: 1.7,
+                                            }}
+                                        >
+                                            {selected.notPerformanceIssues.map((issue, idx) => (
+                                                <li key={idx}>{issue}</li>
+                                            ))}
+                                        </ul>
+                                    )}
+                                </div>
 
-                            <div>
-                                <h3 className="font-semibold">One Change Next Week</h3>
-                                <p className="text-sm text-gray-700 mt-1">{selected.oneChangeNextWeek || "Not set"}</p>
-                            </div>
-                        </section>
+                                <div>
+                                    <div
+                                        style={{
+                                            fontSize: 12,
+                                            fontWeight: 600,
+                                            color: "var(--text-2)",
+                                            marginBottom: 4,
+                                        }}
+                                    >
+                                        One Change Next Week
+                                    </div>
+                                    <div style={{ fontSize: 13, color: "var(--text)" }}>
+                                        {selected.oneChangeNextWeek || (
+                                            <span style={{ color: "var(--text-3)" }}>Not set</span>
+                                        )}
+                                    </div>
+                                </div>
+                            </Card>
+                        </Section>
                     )}
                 </>
             )}
 
+            {/* Edit Sprint Modal */}
             {editSprintId && (
-                <div className="fixed inset-0 bg-black/30 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-lg border p-5 w-full max-w-lg space-y-4">
-                        <h3 className="text-lg font-bold">Edit Sprint</h3>
-                        <div className="grid md:grid-cols-3 gap-3">
-                            <input className="border p-2 rounded" value={editName} onChange={(e) => setEditName(e.target.value)} />
-                            <input type="date" className="border p-2 rounded" value={editStartDate} onChange={(e) => setEditStartDate(e.target.value)} />
+                <div
+                    style={{
+                        position: "fixed",
+                        inset: 0,
+                        background: "rgba(0,0,0,0.6)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        padding: 16,
+                        zIndex: 50,
+                    }}
+                >
+                    <Card style={{ padding: 20, width: "100%", maxWidth: 480 }}>
+                        <div
+                            style={{
+                                fontSize: 15,
+                                fontWeight: 600,
+                                color: "var(--text)",
+                                marginBottom: 16,
+                            }}
+                        >
+                            Edit Sprint
+                        </div>
+                        <div
+                            style={{
+                                display: "grid",
+                                gridTemplateColumns: "1fr 1fr 1fr",
+                                gap: 10,
+                                marginBottom: 12,
+                            }}
+                        >
+                            <input
+                                value={editName}
+                                onChange={(e) => setEditName(e.target.value)}
+                                style={{
+                                    background: "var(--surface-2)",
+                                    border: "1px solid var(--border)",
+                                    color: "var(--text)",
+                                    borderRadius: 6,
+                                    padding: "7px 10px",
+                                    fontSize: 13,
+                                    fontFamily: "inherit",
+                                }}
+                            />
+                            <input
+                                type="date"
+                                value={editStartDate}
+                                onChange={(e) => setEditStartDate(e.target.value)}
+                                style={{
+                                    background: "var(--surface-2)",
+                                    border: "1px solid var(--border)",
+                                    color: "var(--text)",
+                                    borderRadius: 6,
+                                    padding: "7px 10px",
+                                    fontSize: 13,
+                                    fontFamily: "inherit",
+                                }}
+                            />
                             <input
                                 type="number"
                                 min={1}
                                 max={60}
-                                className="border p-2 rounded"
                                 value={editDurationDays}
                                 onChange={(e) => setEditDurationDays(Number(e.target.value))}
+                                style={{
+                                    background: "var(--surface-2)",
+                                    border: "1px solid var(--border)",
+                                    color: "var(--text)",
+                                    borderRadius: 6,
+                                    padding: "7px 10px",
+                                    fontSize: 13,
+                                    fontFamily: "inherit",
+                                }}
                             />
                         </div>
 
-                        {editWarning && <div className="bg-amber-50 border border-amber-200 text-amber-800 p-2 rounded text-sm">{editWarning}</div>}
+                        {editWarning && (
+                            <div
+                                style={{
+                                    background: "var(--yellow-bg)",
+                                    border: "1px solid rgba(251,191,36,0.2)",
+                                    color: "var(--yellow)",
+                                    padding: "10px 14px",
+                                    borderRadius: 6,
+                                    fontSize: 12,
+                                    marginBottom: 12,
+                                }}
+                            >
+                                {editWarning}
+                            </div>
+                        )}
 
-                        <div className="flex gap-2 justify-end">
-                            <button className="px-3 py-2 border rounded" onClick={() => setEditSprintId(null)}>Cancel</button>
-                            <button className="px-3 py-2 bg-blue-600 text-white rounded" onClick={() => handleUpdateSprint(false)}>Save</button>
-                            <button className="px-3 py-2 bg-amber-600 text-white rounded" onClick={() => handleUpdateSprint(true)}>Confirm Recalculate</button>
+                        <div
+                            style={{
+                                display: "flex",
+                                gap: 8,
+                                justifyContent: "flex-end",
+                            }}
+                        >
+                            <Button variant="ghost" onClick={() => setEditSprintId(null)}>
+                                Cancel
+                            </Button>
+                            <Button variant="secondary" onClick={() => handleUpdateSprint(false)}>
+                                Save
+                            </Button>
+                            <Button variant="danger" onClick={() => handleUpdateSprint(true)}>
+                                Confirm Recalculate
+                            </Button>
                         </div>
-                    </div>
+                    </Card>
                 </div>
             )}
-        </div>
-    );
-}
-
-function MetricCard({ label, value }: { label: string; value: string | number }) {
-    return (
-        <div className="border rounded p-3 bg-gray-50">
-            <div className="text-lg font-bold">{value}</div>
-            <div className="text-xs uppercase tracking-wide text-gray-500">{label}</div>
         </div>
     );
 }

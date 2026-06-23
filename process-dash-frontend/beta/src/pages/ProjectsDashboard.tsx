@@ -1,6 +1,16 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api/client";
+import {
+    Badge,
+    Button,
+    Card,
+    EmptyState,
+    Loading,
+    MetricCard,
+    PageHeader,
+    Section,
+} from "../components/ui";
 
 export default function ProjectsDashboard() {
     const [dashboards, setDashboards] = useState<any[]>([]);
@@ -13,56 +23,101 @@ export default function ProjectsDashboard() {
             .finally(() => setLoading(false));
     }, []);
 
-    if (loading) return <div className="p-4 text-center">Loading Projects...</div>;
+    if (loading) return <Loading text="Loading projects…" />;
 
     return (
-        <div className="p-4 max-w-4xl mx-auto space-y-8">
-            <header className="flex justify-between items-center">
-                <h1 className="text-2xl font-bold">Projects Dashboard</h1>
-                <Link to="/project" className="text-sm border px-3 py-1 rounded hover:bg-gray-100">
-                    Manage Projects
-                </Link>
-            </header>
+        <div style={{ padding: "28px 32px", maxWidth: 960, margin: "0 auto" }}>
+            <PageHeader
+                title="Projects Dashboard"
+                right={
+                    <Link to="/project" style={{ textDecoration: "none" }}>
+                        <Button variant="secondary" size="sm">
+                            Manage Projects
+                        </Button>
+                    </Link>
+                }
+            />
 
             {dashboards.length === 0 ? (
-                <div className="text-center text-gray-500 py-10 border rounded bg-gray-50">
-                    No active projects found.
-                </div>
+                <EmptyState
+                    icon="·"
+                    title="No active projects found"
+                    sub="Create a project in the project settings to get started."
+                />
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div
+                    style={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(auto-fill, minmax(400px, 1fr))",
+                        gap: 16,
+                    }}
+                >
                     {dashboards.map(p => (
-                        <div key={p.id} className="border p-6 rounded-lg shadow-sm hover:shadow-md transition">
-                            <h2 className="text-xl font-bold mb-1">{p.name}</h2>
-                            {p.description && <p className="text-gray-500 text-sm mb-4 line-clamp-2">{p.description}</p>}
-                            
-                            <div className="grid grid-cols-2 gap-4 mb-4">
-                                <div className="bg-blue-50 p-3 rounded">
-                                    <div className="text-xs text-blue-600 uppercase font-semibold">Total Focus</div>
-                                    <div className="text-2xl font-bold">{p.metrics.focusBlocks} <span className="text-sm font-normal text-gray-500">blocks</span></div>
+                        <Card key={p.id} style={{ padding: 20 }}>
+                            <div style={{ marginBottom: 4 }}>
+                                <div
+                                    style={{
+                                        fontSize: 15,
+                                        fontWeight: 600,
+                                        color: "var(--text)",
+                                    }}
+                                >
+                                    {p.name}
                                 </div>
-                                <div className="bg-gray-50 p-3 rounded">
-                                    <div className="text-xs text-gray-600 uppercase font-semibold">Active Time</div>
-                                    <div className="text-2xl font-bold">{p.metrics.totalActiveLabel || "~0 mins"}</div>
-                                </div>
-                                <div className="bg-gray-50 p-3 rounded">
-                                    <div className="text-xs text-gray-600 uppercase font-semibold">Blocks</div>
-                                    <div className="text-2xl font-bold">{p.metrics.totalBlocks}</div>
-                                </div>
-                                <div className="bg-red-50 p-3 rounded">
-                                    <div className="text-xs text-red-600 uppercase font-semibold">Fragmentation</div>
-                                    <div className="text-2xl font-bold">
-                                        {Math.round(p.metrics.fragmentationRate * 100)}<span className="text-sm font-normal text-gray-500">%</span>
+                                {p.description && (
+                                    <div
+                                        style={{
+                                            fontSize: 12,
+                                            color: "var(--text-3)",
+                                            marginTop: 4,
+                                            marginBottom: 16,
+                                            overflow: "hidden",
+                                            display: "-webkit-box",
+                                            WebkitLineClamp: 2,
+                                            WebkitBoxOrient: "vertical",
+                                        } as React.CSSProperties}
+                                    >
+                                        {p.description}
                                     </div>
-                                </div>
+                                )}
                             </div>
 
-                            <Link 
-                                to={`/projects/${p.id}/data`}
-                                className="inline-block w-full text-center bg-gray-900 text-white py-2 rounded font-medium hover:bg-black transition-colors"
+                            <div
+                                style={{
+                                    display: "grid",
+                                    gridTemplateColumns: "1fr 1fr",
+                                    gap: 10,
+                                    marginBottom: 16,
+                                    marginTop: 12,
+                                }}
                             >
-                                View Data Deep Dive
+                                <MetricCard
+                                    label="Focus Blocks"
+                                    value={p.metrics.focusBlocks}
+                                    accent
+                                />
+                                <MetricCard
+                                    label="Active Time"
+                                    value={p.metrics.totalActiveLabel || "~0 mins"}
+                                />
+                                <MetricCard
+                                    label="Total Blocks"
+                                    value={p.metrics.totalBlocks}
+                                />
+                                <MetricCard
+                                    label="Fragmentation"
+                                    value={`${Math.round(p.metrics.fragmentationRate * 100)}%`}
+                                    danger={p.metrics.fragmentationRate > 0.3}
+                                    warn={p.metrics.fragmentationRate > 0.15 && p.metrics.fragmentationRate <= 0.3}
+                                />
+                            </div>
+
+                            <Link to={`/projects/${p.id}/data`} style={{ textDecoration: "none" }}>
+                                <Button variant="primary" style={{ width: "100%", justifyContent: "center" }}>
+                                    View Data Deep Dive
+                                </Button>
                             </Link>
-                        </div>
+                        </Card>
                     ))}
                 </div>
             )}

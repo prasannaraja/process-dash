@@ -1,5 +1,15 @@
 import { useState, useEffect } from "react";
 import { api, type SprintDefinition, type SprintRollup, type DayRollup } from "../api/client";
+import {
+    Badge,
+    Card,
+    EmptyState,
+    Loading,
+    MetricCard,
+    PageHeader,
+    Section,
+    Divider,
+} from "../components/ui";
 
 interface IntentSummary {
     name: string;
@@ -113,146 +123,287 @@ export default function WeekendSummary() {
         "Take a real lunch break away from screens."
     ];
 
-    if (loading) return <div className="p-10 text-center text-gray-500">Loading retrospective...</div>;
-    if (!weekData) return <div className="p-10 text-center">No data found.</div>;
+    if (loading) return <Loading text="Loading retrospective…" />;
+    if (!weekData) return (
+        <div style={{ padding: "28px 32px", maxWidth: 960, margin: "0 auto" }}>
+            <EmptyState icon="·" title="No data found" sub="Select a sprint to view the weekend summary." />
+        </div>
+    );
 
     return (
-        <div className="max-w-3xl mx-auto p-6 pb-20 space-y-12 font-sans bg-stone-50 min-h-screen">
-            <header className="space-y-2 border-b-2 border-stone-200 pb-6">
-                <div className="flex justify-between items-center">
-                    <h1 className="text-3xl font-serif text-stone-800">Weekend Summary</h1>
+        <div style={{ padding: "28px 32px", maxWidth: 720, margin: "0 auto", paddingBottom: 80 }}>
+            <PageHeader
+                title="Weekend Summary"
+                sub={`${weekData?.startDate} to ${weekData?.endDate} — Designing a better next week, not judging the last one.`}
+                right={
                     <select
                         value={selectedSprintId}
                         onChange={(e) => setSelectedSprintId(e.target.value)}
-                        className="bg-white border text-stone-600 text-sm p-1 rounded"
+                        style={{
+                            background: "var(--surface-2)",
+                            border: "1px solid var(--border)",
+                            color: "var(--text)",
+                            borderRadius: 6,
+                            padding: "6px 10px",
+                            fontSize: 13,
+                            fontFamily: "inherit",
+                        }}
                     >
                         {sprints.map((s) => (
                             <option key={s.id} value={s.id}>{s.name}</option>
                         ))}
                     </select>
-                </div>
-                <p className="text-xs text-stone-400">{weekData?.startDate} to {weekData?.endDate}</p>
-                <p className="text-stone-500 italic">Designing a better next week, not judging the last one.</p>
-            </header>
+                }
+            />
 
             {/* 1. Week at a Glance */}
-            <section className="space-y-4">
-                <h2 className="text-xl font-bold text-stone-700">Week at a Glance</h2>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <SummaryCard label="Active Work" value={weekData?.metrics?.totalActiveLabel || "~0 mins"} />
-                    <SummaryCard label="Total Blocks" value={weekData?.metrics?.totalBlocks || 0} />
-                    <SummaryCard label="Recovery" value={weekData?.metrics?.totalRecoveryLabel || "~0 mins"} />
-                    <SummaryCard label="Fragmentation" value={`${Math.round((weekData?.metrics?.fragmentationRate || 0) * 100)}%`} />
+            <Section title="Week at a Glance">
+                <div
+                    style={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+                        gap: 12,
+                        marginBottom: 8,
+                    }}
+                >
+                    <MetricCard label="Active Work" value={weekData?.metrics?.totalActiveLabel || "~0 mins"} accent />
+                    <MetricCard label="Total Blocks" value={weekData?.metrics?.totalBlocks || 0} />
+                    <MetricCard label="Recovery" value={weekData?.metrics?.totalRecoveryLabel || "~0 mins"} warn />
+                    <MetricCard label="Fragmentation" value={`${Math.round((weekData?.metrics?.fragmentationRate || 0) * 100)}%`} danger={(weekData?.metrics?.fragmentationRate || 0) > 0.3} />
                 </div>
-                <p className="text-xs text-stone-400 italic text-center">This is an approximation of cognitive effort, not hours worked.</p>
-            </section>
-
-            {/* 2. What You Actually Worked On */}
-            <section className="space-y-4">
-                <h2 className="text-xl font-bold text-stone-700">Where Energy Went</h2>
-                <div className="bg-white p-6 rounded-lg shadow-sm border border-stone-100 divide-y">
-                    {sortedIntents.length === 0 ? <p className="text-gray-400 italic">No work recorded.</p> :
-                        sortedIntents.map(i => (
-                            <div key={i.name} className="py-3 flex justify-between items-center">
-                                <span className="font-medium text-stone-800">{i.name}</span>
-                                <div className="text-sm text-stone-500">
-                                    {i.count} blocks <span className="mx-1">·</span> <span className="font-mono bg-stone-100 px-2 rounded text-stone-600">{bucketMinutes(i.totalMinutes)}</span>
-                                </div>
-                            </div>
-                        ))}
+                <div style={{ fontSize: 11, color: "var(--text-3)", textAlign: "center", fontStyle: "italic" }}>
+                    Approximation of cognitive effort, not hours worked.
                 </div>
-            </section>
+            </Section>
 
-            {/* Recovery Reality */}
-            <section className="space-y-4">
-                <h2 className="text-xl font-bold text-stone-700">Recovery Reality</h2>
-                <div className="bg-amber-50 p-6 rounded-lg border border-amber-100 flex justify-between items-center text-amber-800">
-                    <div>
-                        <div className="text-2xl font-bold">{weekData?.metrics?.totalRecoveryLabel || "~0 mins"}</div>
-                        <div className="text-sm">spent on intentional breaks</div>
-                    </div>
-                    {(weekData?.metrics?.totalRecoveryMinutes || 0) > 0 ? (
-                        <div className="text-right">
-                            <div className="font-bold">Good Job.</div>
-                            <div className="text-xs opacity-75">Breaks protect long-term pace.</div>
+            {/* 2. Where Energy Went */}
+            <Section title="Where Energy Went">
+                <Card style={{ padding: 0, overflow: "hidden" }}>
+                    {sortedIntents.length === 0 ? (
+                        <div style={{ padding: "24px 20px", color: "var(--text-3)", fontStyle: "italic", fontSize: 13 }}>
+                            No work recorded.
                         </div>
                     ) : (
-                        <div className="text-right">
-                            <div className="font-bold">No breaks logged.</div>
-                            <div className="text-xs opacity-75">Consider tracking coffee/lunch to normalize rest.</div>
-                        </div>
+                        sortedIntents.map((i, idx) => (
+                            <div
+                                key={i.name}
+                                style={{
+                                    display: "flex",
+                                    justifyContent: "space-between",
+                                    alignItems: "center",
+                                    padding: "12px 16px",
+                                    borderBottom: idx < sortedIntents.length - 1 ? "1px solid var(--border)" : "none",
+                                }}
+                            >
+                                <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text)" }}>
+                                    {i.name}
+                                </span>
+                                <div style={{ fontSize: 12, color: "var(--text-3)", display: "flex", alignItems: "center", gap: 8 }}>
+                                    <span className="mono">{i.count}</span>
+                                    <span style={{ color: "var(--border-2)" }}>·</span>
+                                    <span
+                                        className="mono"
+                                        style={{
+                                            background: "var(--surface-3)",
+                                            padding: "2px 8px",
+                                            borderRadius: 4,
+                                            color: "var(--text-2)",
+                                        }}
+                                    >
+                                        {bucketMinutes(i.totalMinutes)}
+                                    </span>
+                                </div>
+                            </div>
+                        ))
                     )}
-                </div>
-            </section>
+                </Card>
+            </Section>
+
+            {/* Recovery Reality */}
+            <Section title="Recovery Reality">
+                <Card style={{ padding: 20 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <div>
+                            <div
+                                className="mono"
+                                style={{
+                                    fontSize: 24,
+                                    fontWeight: 700,
+                                    color: "var(--yellow)",
+                                }}
+                            >
+                                {weekData?.metrics?.totalRecoveryLabel || "~0 mins"}
+                            </div>
+                            <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 4 }}>
+                                spent on intentional breaks
+                            </div>
+                        </div>
+                        {(weekData?.metrics?.totalRecoveryMinutes || 0) > 0 ? (
+                            <div style={{ textAlign: "right" }}>
+                                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--green)" }}>
+                                    Good Job.
+                                </div>
+                                <div style={{ fontSize: 11, color: "var(--text-3)" }}>
+                                    Breaks protect long-term pace.
+                                </div>
+                            </div>
+                        ) : (
+                            <div style={{ textAlign: "right" }}>
+                                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--yellow)" }}>
+                                    No breaks logged.
+                                </div>
+                                <div style={{ fontSize: 11, color: "var(--text-3)" }}>
+                                    Consider tracking coffee/lunch to normalize rest.
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </Card>
+            </Section>
 
             {/* 3. Fragmentation Pattern */}
-            <section className="space-y-4">
-                <h2 className="text-xl font-bold text-stone-700">Fragmentation Pattern</h2>
+            <Section title="Fragmentation Pattern">
                 {weekData?.metrics?.topFragmenters?.length > 0 ? (
-                    <div className="grid grid-cols-1 gap-3">
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                         {weekData.metrics.topFragmenters.map((f, i) => (
-                            <div key={f.code} className="flex items-center gap-3 p-3 bg-red-50/50 rounded border border-red-100">
-                                <div className="font-bold text-red-800 w-8 h-8 flex items-center justify-center bg-white rounded-full border border-red-100">{i + 1}</div>
-                                <div>
-                                    <span className="font-bold text-stone-700">{f.code}</span> interrupted {f.count} blocks.
+                            <div
+                                key={f.code}
+                                style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 12,
+                                    padding: "12px 16px",
+                                    background: "var(--red-bg)",
+                                    border: "1px solid rgba(248,113,113,0.15)",
+                                    borderRadius: 8,
+                                }}
+                            >
+                                <div
+                                    className="mono"
+                                    style={{
+                                        fontSize: 12,
+                                        fontWeight: 700,
+                                        color: "var(--red)",
+                                        width: 24,
+                                        height: 24,
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        background: "var(--surface)",
+                                        borderRadius: "50%",
+                                        flexShrink: 0,
+                                    }}
+                                >
+                                    {i + 1}
+                                </div>
+                                <div style={{ fontSize: 13, color: "var(--text)" }}>
+                                    <span style={{ fontWeight: 600 }}>{f.code}</span>
+                                    <span style={{ color: "var(--text-3)" }}> interrupted {f.count} blocks.</span>
                                 </div>
                             </div>
                         ))}
                     </div>
                 ) : (
-                    <p className="text-stone-500 bg-green-50 p-4 rounded border border-green-100">Zero major interruptions recorded. Smooth sailing?</p>
+                    <div
+                        style={{
+                            background: "var(--green-bg)",
+                            border: "1px solid rgba(74,222,128,0.15)",
+                            borderRadius: 8,
+                            padding: "12px 16px",
+                            fontSize: 13,
+                            color: "var(--green)",
+                        }}
+                    >
+                        Zero major interruptions recorded. Smooth sailing?
+                    </div>
                 )}
-            </section>
+            </Section>
 
             {/* 4. Focus Reality Check */}
-            <section className="space-y-4">
-                <h2 className="text-xl font-bold text-stone-700">Focus Reality Check</h2>
-                <div className="bg-white p-6 rounded-lg border border-stone-100 grid md:grid-cols-2 gap-8">
-                    <div>
-                        <div className="text-4xl font-serif text-stone-800 mb-1">{focusDays.length} <span className="text-base text-stone-400 sans-serif">days</span></div>
-                        <div className="text-sm text-stone-500">Allowed deeper focus blocks (30m+)</div>
+            <Section title="Focus Reality Check">
+                <Card style={{ padding: 20 }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+                        <div>
+                            <div
+                                className="mono"
+                                style={{ fontSize: 28, fontWeight: 700, color: "var(--text)", marginBottom: 4 }}
+                            >
+                                {focusDays.length}{" "}
+                                <span style={{ fontSize: 14, fontWeight: 400, color: "var(--text-3)" }}>
+                                    days
+                                </span>
+                            </div>
+                            <div style={{ fontSize: 12, color: "var(--text-3)" }}>
+                                Allowed deeper focus blocks (30m+)
+                            </div>
+                        </div>
+                        <div>
+                            <div
+                                className="mono"
+                                style={{ fontSize: 28, fontWeight: 700, color: "var(--text)", marginBottom: 4 }}
+                            >
+                                {longestBlockMins > 0 ? bucketMinutes(longestBlockMins) : "—"}
+                            </div>
+                            <div style={{ fontSize: 12, color: "var(--text-3)" }}>
+                                Longest uninterrupted flow state
+                            </div>
+                        </div>
                     </div>
-                    <div>
-                        <div className="text-4xl font-serif text-stone-800 mb-1">{longestBlockMins > 0 ? bucketMinutes(longestBlockMins) : "-"}</div>
-                        <div className="text-sm text-stone-500">Longest uninterrupted flow state</div>
-                    </div>
-                </div>
-            </section>
+                </Card>
+            </Section>
 
-            {/* 5. What Was NOT a Performance Issue */}
-            <section className="space-y-4 opacity-75">
-                <h2 className="text-xl font-bold text-stone-700">Not A Performance Issue</h2>
-                <div className="bg-stone-100 p-6 rounded-lg text-stone-600 italic">
+            {/* 5. Not A Performance Issue */}
+            <Section title="Not A Performance Issue">
+                <Card style={{ padding: 20 }}>
                     {weekData?.reflection?.notPerformanceIssues?.length > 0 ? (
-                        <ul className="list-disc pl-5 space-y-1">
+                        <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: "var(--text-2)", lineHeight: 1.8 }}>
                             {weekData.reflection.notPerformanceIssues.map((issue, i) => (
                                 <li key={i}>{issue}</li>
                             ))}
                         </ul>
                     ) : (
-                        <p>No external blockers logged in weekly reflection.</p>
+                        <div style={{ fontSize: 13, color: "var(--text-3)", fontStyle: "italic" }}>
+                            No external blockers logged in weekly reflection.
+                        </div>
                     )}
-                </div>
-            </section>
+                </Card>
+            </Section>
 
             {/* 6. Structural Wins */}
-            <section className="space-y-4">
-                <h2 className="text-xl font-bold text-stone-700 text-green-700">Structural Wins</h2>
-                <ul className="space-y-2">
+            <Section title="Structural Wins">
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     {wins.map((w, i) => (
-                        <li key={i} className="flex gap-2 items-center text-stone-700">
-                            <span className="text-green-500 text-xl">✓</span> {w}
-                        </li>
+                        <div
+                            key={i}
+                            style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 10,
+                                fontSize: 13,
+                                color: "var(--text)",
+                            }}
+                        >
+                            <span style={{ color: "var(--green)", fontSize: 16, flexShrink: 0 }}>✓</span>
+                            {w}
+                        </div>
                     ))}
-                </ul>
-            </section>
+                </div>
+            </Section>
 
-            {/* 7. Next Week Improvements */}
-            <section className="space-y-6 pt-6 border-t border-stone-200">
-                <h2 className="text-2xl font-serif font-bold text-stone-900">Design Next Week</h2>
-                <p className="text-stone-600">Pick 1-3 structural changes to try. Don't rely on willpower.</p>
+            <Divider style={{ margin: "32px 0 24px" }} />
 
-                <div className="grid md:grid-cols-2 gap-3">
+            {/* 7. Design Next Week */}
+            <Section title="Design Next Week">
+                <div style={{ fontSize: 13, color: "var(--text-2)", marginBottom: 16 }}>
+                    Pick 1–3 structural changes to try. Don't rely on willpower.
+                </div>
+                <div
+                    style={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr 1fr",
+                        gap: 10,
+                    }}
+                >
                     {improvementsOptions.map(opt => (
                         <button
                             key={opt}
@@ -263,19 +414,30 @@ export default function WeekendSummary() {
                                     setSelectedImprovements([...selectedImprovements, opt]);
                                 }
                             }}
-                            className={`text-left p-4 rounded border transition-all ${selectedImprovements.includes(opt)
-                                ? "bg-blue-50 border-blue-400 ring-1 ring-blue-400"
-                                : "bg-white border-stone-200 hover:border-blue-300"
-                                }`}
+                            style={{
+                                textAlign: "left",
+                                padding: "14px 16px",
+                                borderRadius: 8,
+                                fontSize: 13,
+                                fontFamily: "inherit",
+                                cursor: "pointer",
+                                transition: "all 0.15s",
+                                border: selectedImprovements.includes(opt)
+                                    ? "1px solid rgba(129,140,248,0.4)"
+                                    : "1px solid var(--border)",
+                                background: selectedImprovements.includes(opt)
+                                    ? "var(--accent-bg)"
+                                    : "var(--surface)",
+                                color: selectedImprovements.includes(opt)
+                                    ? "var(--accent)"
+                                    : "var(--text-2)",
+                            }}
                         >
                             {opt}
                         </button>
                     ))}
                 </div>
-
-                {/* Custom entry could go here, but omitted for simplicity per specs */}
-            </section>
-
+            </Section>
         </div>
     );
 }
@@ -299,13 +461,4 @@ function getDatesInRange(startDate: string, endDate: string): string[] {
     }
 
     return result;
-}
-
-function SummaryCard({ label, value }: { label: string; value: string | number }) {
-    return (
-        <div className="bg-white p-4 rounded border border-stone-100 text-center">
-            <div className="text-2xl font-bold text-stone-800">{value}</div>
-            <div className="text-xs text-stone-400 uppercase tracking-wider mt-1">{label}</div>
-        </div>
-    );
 }

@@ -1,5 +1,16 @@
 import { useState, useEffect } from "react";
 import { api, type DayRollup, type ProjectDefinition } from "../api/client";
+import {
+    Badge,
+    Button,
+    Card,
+    Divider,
+    EmptyState,
+    Loading,
+    MetricCard,
+    PageHeader,
+    Section,
+} from "../components/ui";
 
 // Bucket options for dropdown
 const DURATION_BUCKETS = [
@@ -10,6 +21,22 @@ const DURATION_BUCKETS = [
     { label: "~½ day (3h)", value: 180 },
     { label: "~1 day (6h)", value: 360 },
 ];
+
+// Shared input style
+const inputStyle: React.CSSProperties = {
+    background: "var(--surface-2)",
+    border: "1px solid var(--border)",
+    color: "var(--text)",
+    borderRadius: 6,
+    padding: "7px 10px",
+    fontSize: 13,
+    fontFamily: "inherit",
+    width: "100%",
+};
+
+const selectStyle: React.CSSProperties = {
+    ...inputStyle,
+};
 
 export default function Today() {
     const [date] = useState(() => new Date().toISOString().split("T")[0]);
@@ -52,11 +79,6 @@ export default function Today() {
             }
         }).catch(console.error);
     }, [date]);
-
-    // If there's an active block but no local startedAt, we can't recover the exact start time 
-    // without fetching it from backend (which we aren't storing on block yet in MVP, only event log).
-    // For MVP, we'll just let the "Suggested" be 0 or manual input if page reloaded.
-    // Ideally, we'd fetch start time from backend.
 
     const handleSetIntents = async () => {
         const intents = intentsInput.split("\n").filter((s) => s.trim());
@@ -169,182 +191,301 @@ export default function Today() {
         }
     };
 
-    if (!data) return <div>Loading...</div>;
+    if (!data) return <Loading text="Loading today's dashboard…" />;
 
     return (
-        <div className="p-4 max-w-2xl mx-auto space-y-8">
-            <header className="flex justify-between items-center">
-                <h1 className="text-2xl font-bold">Today: {date}</h1>
-                <div className="flex items-center gap-3">
-                    {exportSuccess && (
-                        <span className="text-xs text-green-600 font-medium animate-pulse">
-                            Exported!
-                        </span>
-                    )}
-                    <button onClick={handleExport} className="text-sm underline text-gray-600 hover:text-black">Export MD</button>
-                </div>
-            </header>
+        <div style={{ padding: "28px 32px", maxWidth: 800, margin: "0 auto" }}>
+            <PageHeader
+                title={`Today — ${date}`}
+                right={
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        {exportSuccess && (
+                            <span style={{ fontSize: 12, color: "var(--green)", fontWeight: 600 }}>
+                                Exported!
+                            </span>
+                        )}
+                        <Button variant="ghost" size="sm" onClick={handleExport}>
+                            Export MD
+                        </Button>
+                    </div>
+                }
+            />
 
             {/* Intents Section */}
-            <section className="bg-gray-50 p-4 rounded">
-                <h2 className="font-semibold mb-2">Daily Intents</h2>
-                {data.intents.length === 0 ? (
-                    <div className="space-y-2">
-                        <textarea
-                            className="w-full border p-2"
-                            rows={5}
-                            placeholder="List up to 5 intents (one per line)..."
-                            value={intentsInput}
-                            onChange={(e) => setIntentsInput(e.target.value)}
-                        />
-                        <button
-                            onClick={handleSetIntents}
-                            className="bg-blue-600 text-white px-4 py-1 rounded"
-                        >
-                            Set Intents
-                        </button>
-                    </div>
-                ) : (
-                    <ul className="list-disc pl-5">
-                        {data.intents.map((i, idx) => (
-                            <li key={idx}>{i}</li>
-                        ))}
-                    </ul>
-                )}
-            </section>
+            <Section title="Daily Intents">
+                <Card style={{ padding: 16 }}>
+                    {data.intents.length === 0 ? (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                            <textarea
+                                rows={5}
+                                placeholder="List up to 5 intents (one per line)..."
+                                value={intentsInput}
+                                onChange={(e) => setIntentsInput(e.target.value)}
+                                style={{
+                                    ...inputStyle,
+                                    resize: "vertical",
+                                }}
+                            />
+                            <Button variant="primary" onClick={handleSetIntents} style={{ alignSelf: "flex-start" }}>
+                                Set Intents
+                            </Button>
+                        </div>
+                    ) : (
+                        <ul style={{ margin: 0, paddingLeft: 18, lineHeight: 1.9 }}>
+                            {data.intents.map((i, idx) => (
+                                <li key={idx} style={{ fontSize: 13, color: "var(--text-2)" }}>
+                                    {i}
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </Card>
+            </Section>
 
             {/* Active Work / Recovery Section */}
-            <section className="border-2 border-slate-200 p-6 rounded-lg">
+            <Section title={activeBlock ? "Active Block" : recoveryMode ? "Break In Progress" : "Start Work"}>
                 {activeBlock ? (
-                    <div className="space-y-4">
-                        <div className="bg-green-50 p-4 rounded border border-green-200">
-                            <div className="flex justify-between items-start">
+                    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                        {/* Active block header */}
+                        <Card
+                            style={{
+                                padding: 16,
+                                background: "var(--green-bg)",
+                                border: "1px solid rgba(74,222,128,0.2)",
+                            }}
+                        >
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                                 <div>
-                                    <h3 className="text-green-800 font-bold uppercase text-xs tracking-wider">
-                                        Now Focusing On
-                                    </h3>
-                                    <p className="text-xl font-medium mt-1">{activeBlock.intent}</p>
-                                </div>
-                                {startedAt && (
-                                    <div className="text-right">
-                                        <span className="text-sm text-gray-500">Started at {startedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                        <div className="text-2xl font-bold text-green-700">~{suggestedMinutes}m</div>
-                                    </div>
-                                )}
-                            </div>
-
-                            {activeBlock.notes && (
-                                <p className="text-gray-500 text-sm mt-1">{activeBlock.notes}</p>
-                            )}
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="border p-4 rounded space-y-2">
-                                <h4 className="font-semibold text-sm">Interrupt</h4>
-                                <select
-                                    className="w-full border p-1"
-                                    value={interruptReason}
-                                    onChange={(e) => setInterruptReason(e.target.value)}
-                                >
-                                    <option value="MEETING">Meeting</option>
-                                    <option value="DEPENDENCY">Dependency</option>
-                                    <option value="CONTEXT_SWITCH">Context Switch</option>
-                                    <option value="FAMILY">Family</option>
-                                    <option value="EMOTIONAL_LOAD">Emotional Load</option>
-                                    <option value="TECH_ISSUE">Tech Issue</option>
-                                    <option value="UNPLANNED_REQUEST">Unplanned Request</option>
-                                </select>
-                                <button
-                                    onClick={handleInterrupt}
-                                    className="w-full bg-red-100 text-red-700 py-1 rounded hover:bg-red-200"
-                                >
-                                    Log Interruption
-                                </button>
-                            </div>
-
-                            <div className="border p-4 rounded space-y-3">
-                                <h4 className="font-semibold text-sm">Complete</h4>
-                                <input
-                                    type="text"
-                                    placeholder="Outcome (optional)"
-                                    className="w-full border p-1"
-                                    value={endOutcome}
-                                    onChange={(e) => setEndOutcome(e.target.value)}
-                                />
-
-                                <div className="space-y-1">
-                                    <label className="text-xs font-semibold text-gray-500">Duration</label>
-                                    <select
-                                        className="w-full border p-1 bg-white"
-                                        value={useExact ? "exact" : selectedDuration}
-                                        onChange={(e) => {
-                                            if (e.target.value === "exact") setUseExact(true);
-                                            else {
-                                                setUseExact(false);
-                                                setSelectedDuration(Number(e.target.value));
-                                            }
+                                    <div
+                                        style={{
+                                            fontSize: 10,
+                                            fontWeight: 700,
+                                            letterSpacing: "0.08em",
+                                            textTransform: "uppercase",
+                                            color: "var(--green)",
+                                            marginBottom: 4,
                                         }}
                                     >
-                                        <option disabled>-- Select Approximate --</option>
-                                        {DURATION_BUCKETS.map(b => (
-                                            <option key={b.value} value={b.value}>{b.label}</option>
-                                        ))}
-                                        <option disabled>-- OR --</option>
-                                        <option value="exact">Exact / Use Suggested</option>
-                                    </select>
+                                        Now Focusing On
+                                    </div>
+                                    <div
+                                        style={{
+                                            fontSize: 18,
+                                            fontWeight: 500,
+                                            color: "var(--text)",
+                                        }}
+                                    >
+                                        {activeBlock.intent}
+                                    </div>
                                 </div>
-
-                                {useExact && (
-                                    <div className="flex gap-2">
-                                        <input
-                                            type="number"
-                                            placeholder="Mins"
-                                            className="w-full border p-1"
-                                            value={exactDuration}
-                                            onChange={(e) => setExactDuration(e.target.value)}
-                                        />
-                                        <button
-                                            className="text-xs underline text-blue-600 whitespace-nowrap"
-                                            onClick={() => setExactDuration(String(suggestedMinutes))}
+                                {startedAt && (
+                                    <div style={{ textAlign: "right" }}>
+                                        <div style={{ fontSize: 12, color: "var(--text-3)" }}>
+                                            Started at{" "}
+                                            {startedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                                        </div>
+                                        <div
+                                            className="mono"
+                                            style={{
+                                                fontSize: 22,
+                                                fontWeight: 700,
+                                                color: "var(--green)",
+                                            }}
                                         >
-                                            Use {suggestedMinutes}m
-                                        </button>
+                                            ~{suggestedMinutes}m
+                                        </div>
                                     </div>
                                 )}
-
-                                <button
-                                    onClick={handleEnd}
-                                    className="w-full bg-blue-600 text-white py-1 rounded hover:bg-blue-700"
-                                >
-                                    Finish Block
-                                </button>
                             </div>
+                            {activeBlock.notes && (
+                                <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 8 }}>
+                                    {activeBlock.notes}
+                                </div>
+                            )}
+                        </Card>
+
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                            {/* Interrupt Panel */}
+                            <Card style={{ padding: 16 }}>
+                                <div
+                                    style={{
+                                        fontSize: 12,
+                                        fontWeight: 600,
+                                        color: "var(--text-2)",
+                                        marginBottom: 10,
+                                    }}
+                                >
+                                    Interrupt
+                                </div>
+                                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                                    <select
+                                        style={selectStyle}
+                                        value={interruptReason}
+                                        onChange={(e) => setInterruptReason(e.target.value)}
+                                    >
+                                        <option value="MEETING">Meeting</option>
+                                        <option value="DEPENDENCY">Dependency</option>
+                                        <option value="CONTEXT_SWITCH">Context Switch</option>
+                                        <option value="FAMILY">Family</option>
+                                        <option value="EMOTIONAL_LOAD">Emotional Load</option>
+                                        <option value="TECH_ISSUE">Tech Issue</option>
+                                        <option value="UNPLANNED_REQUEST">Unplanned Request</option>
+                                    </select>
+                                    <Button variant="danger" onClick={handleInterrupt} style={{ width: "100%", justifyContent: "center" }}>
+                                        Log Interruption
+                                    </Button>
+                                </div>
+                            </Card>
+
+                            {/* Complete Panel */}
+                            <Card style={{ padding: 16 }}>
+                                <div
+                                    style={{
+                                        fontSize: 12,
+                                        fontWeight: 600,
+                                        color: "var(--text-2)",
+                                        marginBottom: 10,
+                                    }}
+                                >
+                                    Complete
+                                </div>
+                                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                                    <input
+                                        type="text"
+                                        placeholder="Outcome (optional)"
+                                        style={inputStyle}
+                                        value={endOutcome}
+                                        onChange={(e) => setEndOutcome(e.target.value)}
+                                    />
+
+                                    <div>
+                                        <div
+                                            style={{
+                                                fontSize: 11,
+                                                fontWeight: 500,
+                                                color: "var(--text-3)",
+                                                marginBottom: 4,
+                                            }}
+                                        >
+                                            Duration
+                                        </div>
+                                        <select
+                                            style={selectStyle}
+                                            value={useExact ? "exact" : selectedDuration}
+                                            onChange={(e) => {
+                                                if (e.target.value === "exact") setUseExact(true);
+                                                else {
+                                                    setUseExact(false);
+                                                    setSelectedDuration(Number(e.target.value));
+                                                }
+                                            }}
+                                        >
+                                            <option disabled>-- Select Approximate --</option>
+                                            {DURATION_BUCKETS.map(b => (
+                                                <option key={b.value} value={b.value}>{b.label}</option>
+                                            ))}
+                                            <option disabled>-- OR --</option>
+                                            <option value="exact">Exact / Use Suggested</option>
+                                        </select>
+                                    </div>
+
+                                    {useExact && (
+                                        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                                            <input
+                                                type="number"
+                                                placeholder="Mins"
+                                                style={{ ...inputStyle, flex: 1 }}
+                                                value={exactDuration}
+                                                onChange={(e) => setExactDuration(e.target.value)}
+                                            />
+                                            <button
+                                                style={{
+                                                    background: "none",
+                                                    border: "none",
+                                                    color: "var(--accent)",
+                                                    cursor: "pointer",
+                                                    fontSize: 12,
+                                                    fontFamily: "inherit",
+                                                    textDecoration: "underline",
+                                                    whiteSpace: "nowrap",
+                                                    padding: 0,
+                                                }}
+                                                onClick={() => setExactDuration(String(suggestedMinutes))}
+                                            >
+                                                Use {suggestedMinutes}m
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    <Button variant="primary" onClick={handleEnd} style={{ width: "100%", justifyContent: "center" }}>
+                                        Finish Block
+                                    </Button>
+                                </div>
+                            </Card>
                         </div>
                     </div>
                 ) : recoveryMode ? (
-                    <div className="bg-amber-50 p-6 rounded border border-amber-200 space-y-4">
-                        <div className="flex justify-between items-start">
+                    <Card
+                        style={{
+                            padding: 20,
+                            background: "var(--yellow-bg)",
+                            border: "1px solid rgba(251,191,36,0.2)",
+                        }}
+                    >
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
                             <div>
-                                <h3 className="text-amber-800 font-bold uppercase text-xs tracking-wider">
+                                <div
+                                    style={{
+                                        fontSize: 10,
+                                        fontWeight: 700,
+                                        letterSpacing: "0.08em",
+                                        textTransform: "uppercase",
+                                        color: "var(--yellow)",
+                                        marginBottom: 4,
+                                    }}
+                                >
                                     Recovery In Progress
-                                </h3>
-                                <p className="text-2xl font-medium mt-1 text-amber-900">
-                                    {recoveryKind === "COFFEE" ? "☕ Coffee Break" : "🥗 Lunch Break"}
-                                </p>
+                                </div>
+                                <div style={{ fontSize: 18, fontWeight: 500, color: "var(--text)" }}>
+                                    {recoveryKind === "COFFEE" ? "Coffee Break" : "Lunch Break"}
+                                </div>
                             </div>
                             {startedAt && (
-                                <div className="text-right">
-                                    <span className="text-sm text-amber-700">Started at {startedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                    <div className="text-2xl font-bold text-amber-800">~{suggestedMinutes}m</div>
+                                <div style={{ textAlign: "right" }}>
+                                    <div style={{ fontSize: 12, color: "var(--text-3)" }}>
+                                        Started at{" "}
+                                        {startedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                                    </div>
+                                    <div
+                                        className="mono"
+                                        style={{
+                                            fontSize: 22,
+                                            fontWeight: 700,
+                                            color: "var(--yellow)",
+                                        }}
+                                    >
+                                        ~{suggestedMinutes}m
+                                    </div>
                                 </div>
                             )}
                         </div>
 
-                        <div className="border-t border-amber-200 pt-4 space-y-3">
-                            <div className="space-y-1">
-                                <label className="text-xs font-semibold text-amber-800">Duration</label>
+                        <Divider style={{ borderColor: "rgba(251,191,36,0.2)" }} />
+
+                        <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingTop: 12 }}>
+                            <div>
+                                <div
+                                    style={{
+                                        fontSize: 11,
+                                        fontWeight: 500,
+                                        color: "var(--text-3)",
+                                        marginBottom: 4,
+                                    }}
+                                >
+                                    Duration
+                                </div>
                                 <select
-                                    className="w-full border border-amber-300 p-1 bg-white rounded"
+                                    style={selectStyle}
                                     value={useExact ? "exact" : selectedDuration}
                                     onChange={(e) => {
                                         if (e.target.value === "exact") setUseExact(true);
@@ -364,16 +505,26 @@ export default function Today() {
                             </div>
 
                             {useExact && (
-                                <div className="flex gap-2">
+                                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                                     <input
                                         type="number"
                                         placeholder="Mins"
-                                        className="w-full border p-1 rounded"
+                                        style={{ ...inputStyle, flex: 1 }}
                                         value={exactDuration}
                                         onChange={(e) => setExactDuration(e.target.value)}
                                     />
                                     <button
-                                        className="text-xs underline text-amber-800 whitespace-nowrap"
+                                        style={{
+                                            background: "none",
+                                            border: "none",
+                                            color: "var(--accent)",
+                                            cursor: "pointer",
+                                            fontSize: 12,
+                                            fontFamily: "inherit",
+                                            textDecoration: "underline",
+                                            whiteSpace: "nowrap",
+                                            padding: 0,
+                                        }}
                                         onClick={() => setExactDuration(String(suggestedMinutes))}
                                     >
                                         Use {suggestedMinutes}m
@@ -381,27 +532,30 @@ export default function Today() {
                                 </div>
                             )}
 
-                            <button
+                            <Button
+                                variant="secondary"
                                 onClick={handleEndRecovery}
-                                className="w-full bg-amber-600 text-white py-2 rounded font-medium hover:bg-amber-700"
+                                style={{ width: "100%", justifyContent: "center" }}
                             >
                                 Finish Break
-                            </button>
+                            </Button>
                         </div>
-                    </div>
+                    </Card>
                 ) : (
-                    <div className="space-y-4">
-                        <h3 className="font-semibold">Start New Block</h3>
-                        <div className="space-y-2">
+                    <Card style={{ padding: 16 }}>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                             <input
-                                className="w-full border p-2 mb-2"
+                                style={inputStyle}
                                 placeholder="What are you focusing on?"
                                 value={newIntent}
                                 onChange={(e) => setNewIntent(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === "Enter" && newIntent) handleStartBlock();
+                                }}
                             />
                             {projects.length > 0 && (
-                                <select 
-                                    className="w-full border p-2 mb-2 bg-white"
+                                <select
+                                    style={selectStyle}
                                     value={selectedProjectId}
                                     onChange={(e) => setSelectedProjectId(e.target.value)}
                                 >
@@ -412,130 +566,201 @@ export default function Today() {
                                 </select>
                             )}
                             <input
-                                className="w-full border p-2"
+                                style={inputStyle}
                                 placeholder="Notes (optional)"
                                 value={newNotes}
                                 onChange={(e) => setNewNotes(e.target.value)}
                             />
-                            <div className="flex gap-2">
-                                <button
+                            <div style={{ display: "flex", gap: 8 }}>
+                                <Button
+                                    variant="primary"
                                     onClick={handleStartBlock}
                                     disabled={!newIntent}
-                                    className="flex-1 bg-slate-800 text-white px-4 py-2 rounded hover:bg-slate-700 disabled:opacity-50 font-medium"
+                                    style={{ flex: 1, justifyContent: "center" }}
                                 >
                                     Start Focus
-                                </button>
-                                <button
+                                </Button>
+                                <Button
+                                    variant="secondary"
                                     onClick={() => handleStartRecovery("COFFEE")}
-                                    className="bg-amber-100 text-amber-800 px-4 py-2 rounded hover:bg-amber-200 border border-amber-200"
+                                    style={{
+                                        background: "var(--yellow-bg)",
+                                        border: "1px solid rgba(251,191,36,0.2)",
+                                        color: "var(--yellow)",
+                                    }}
                                 >
-                                    ☕ Coffee
-                                </button>
-                                <button
+                                    Coffee
+                                </Button>
+                                <Button
+                                    variant="secondary"
                                     onClick={() => handleStartRecovery("LUNCH")}
-                                    className="bg-amber-100 text-amber-800 px-4 py-2 rounded hover:bg-amber-200 border border-amber-200"
+                                    style={{
+                                        background: "var(--yellow-bg)",
+                                        border: "1px solid rgba(251,191,36,0.2)",
+                                        color: "var(--yellow)",
+                                    }}
                                 >
-                                    🥗 Lunch
-                                </button>
+                                    Lunch
+                                </Button>
                             </div>
                         </div>
-                    </div>
+                    </Card>
                 )}
-            </section>
+            </Section>
 
             {/* Metrics Summary */}
-            <section className="grid grid-cols-4 gap-4 text-center">
-                <div className="bg-gray-100 p-2 rounded">
-                    <div className="text-2xl font-bold">{data.metrics.totalBlocks}</div>
-                    <div className="text-xs text-gray-500 uppercase">Total Blocks</div>
+            <Section title="Today's Stats">
+                <div
+                    style={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+                        gap: 12,
+                    }}
+                >
+                    <MetricCard label="Total Blocks" value={data.metrics.totalBlocks} />
+                    <MetricCard label="Focus Blocks" value={data.metrics.focusBlocks} accent />
+                    <MetricCard
+                        label="Interrupted"
+                        value={data.metrics.interruptedBlocks}
+                        danger={data.metrics.interruptedBlocks > 0}
+                    />
+                    <MetricCard label="Active Time" value={data.metrics.totalActiveLabel || "-"} />
+                    <MetricCard label="Recovery" value={data.metrics.totalRecoveryLabel || "-"} warn />
                 </div>
-                <div className="bg-gray-100 p-2 rounded">
-                    <div className="text-2xl font-bold">{data.metrics.focusBlocks}</div>
-                    <div className="text-xs text-gray-500 uppercase">Focus</div>
-                </div>
-                <div className="bg-gray-100 p-2 rounded">
-                    <div className="text-2xl font-bold">{data.metrics.interruptedBlocks}</div>
-                    <div className="text-xs text-gray-500 uppercase">Interrupted</div>
-                </div>
-                <div className="bg-gray-100 p-2 rounded">
-                    <div className="text-lg font-bold truncate px-1">
-                        {data.metrics.totalActiveLabel || "-"}
-                    </div>
-                    <div className="text-xs text-gray-500 uppercase">Active Time</div>
-                </div>
-                <div className="bg-amber-50 p-2 rounded border border-amber-100">
-                    <div className="text-lg font-bold truncate px-1 text-amber-800">
-                        {data.metrics.totalRecoveryLabel || "-"}
-                    </div>
-                    <div className="text-xs text-amber-600 uppercase font-medium">Recovery</div>
-                </div>
-            </section>
+            </Section>
 
-            {/* Recent Blocks Table */}
-            <section>
-                <h3 className="font-bold mb-2">Today's Log</h3>
-                <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left">
-                        <thead className="bg-gray-100 text-gray-600 uppercase text-xs">
-                            <tr>
-                                <th className="p-2">Intent</th>
-                                <th className="p-2">Outcome</th>
-                                <th className="p-2">Duration</th>
-                                <th className="p-2">Status</th>
+            {/* Today's Log Table */}
+            <Section title="Today's Log">
+                <div
+                    style={{
+                        border: "1px solid var(--border)",
+                        borderRadius: 8,
+                        overflow: "hidden",
+                    }}
+                >
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                        <thead>
+                            <tr
+                                style={{
+                                    background: "var(--surface-2)",
+                                    borderBottom: "1px solid var(--border)",
+                                }}
+                            >
+                                {["Intent", "Outcome", "Duration", "Status"].map((h) => (
+                                    <th
+                                        key={h}
+                                        style={{
+                                            padding: "10px 14px",
+                                            textAlign: "left",
+                                            fontSize: 11,
+                                            fontWeight: 600,
+                                            letterSpacing: "0.06em",
+                                            textTransform: "uppercase",
+                                            color: "var(--text-3)",
+                                        }}
+                                    >
+                                        {h}
+                                    </th>
+                                ))}
                             </tr>
                         </thead>
                         <tbody>
                             {data.blocks.map((b) => (
-                                <tr key={b.blockId} className="border-b">
-                                    <td className="p-2 font-medium">{b.intent}</td>
-                                    <td className="p-2 text-gray-600">{b.actualOutcome || "-"}</td>
-                                    <td className="p-2">
+                                <tr
+                                    key={b.blockId}
+                                    style={{ borderBottom: "1px solid var(--border)" }}
+                                    onMouseEnter={(e) =>
+                                        (e.currentTarget.style.background = "var(--surface-2)")
+                                    }
+                                    onMouseLeave={(e) =>
+                                        (e.currentTarget.style.background = "transparent")
+                                    }
+                                >
+                                    <td
+                                        style={{
+                                            padding: "10px 14px",
+                                            fontWeight: 500,
+                                            color: "var(--text)",
+                                        }}
+                                    >
+                                        {b.intent}
+                                    </td>
+                                    <td style={{ padding: "10px 14px", color: "var(--text-2)" }}>
+                                        {b.actualOutcome || "-"}
+                                    </td>
+                                    <td
+                                        className="mono"
+                                        style={{ padding: "10px 14px", color: "var(--text-2)" }}
+                                    >
                                         {b.durationLabel || "-"}
                                     </td>
-                                    <td className="p-2">
+                                    <td style={{ padding: "10px 14px" }}>
                                         {b.interrupted ? (
-                                            <span className="text-red-600 bg-red-50 px-2 py-0.5 rounded text-xs">
-                                                {b.reasonCode}
-                                            </span>
+                                            <Badge variant="red">{b.reasonCode}</Badge>
                                         ) : b.durationMinutes ? (
-                                            <span className="text-green-600 bg-green-50 px-2 py-0.5 rounded text-xs">
-                                                Done
-                                            </span>
+                                            <Badge variant="green">Done</Badge>
                                         ) : (
-                                            <span className="text-blue-600 bg-blue-50 px-2 py-0.5 rounded text-xs animate-pulse">
-                                                Active
-                                            </span>
+                                            <Badge variant="accent">Active</Badge>
                                         )}
                                     </td>
                                 </tr>
                             ))}
                             {(data as any).recoveryBlocks?.map((b: any) => (
-                                <tr key={b.blockId} className="border-b bg-amber-50/50">
-                                    <td className="p-2 font-medium text-amber-900">
-                                        {b.kind === "COFFEE" ? "☕ Coffee Break" : "🥗 Lunch Break"}
+                                <tr
+                                    key={b.blockId}
+                                    style={{
+                                        borderBottom: "1px solid var(--border)",
+                                        background: "rgba(251,191,36,0.04)",
+                                    }}
+                                    onMouseEnter={(e) =>
+                                        (e.currentTarget.style.background = "var(--surface-2)")
+                                    }
+                                    onMouseLeave={(e) =>
+                                        (e.currentTarget.style.background = "rgba(251,191,36,0.04)")
+                                    }
+                                >
+                                    <td
+                                        style={{
+                                            padding: "10px 14px",
+                                            fontWeight: 500,
+                                            color: "var(--yellow)",
+                                        }}
+                                    >
+                                        {b.kind === "COFFEE" ? "Coffee Break" : "Lunch Break"}
                                     </td>
-                                    <td className="p-2 text-gray-500 italic">Recovery</td>
-                                    <td className="p-2 text-amber-800 font-medium">
+                                    <td style={{ padding: "10px 14px", color: "var(--text-3)", fontStyle: "italic" }}>
+                                        Recovery
+                                    </td>
+                                    <td
+                                        className="mono"
+                                        style={{
+                                            padding: "10px 14px",
+                                            color: "var(--yellow)",
+                                            fontWeight: 500,
+                                        }}
+                                    >
                                         {b.durationLabel || "-"}
                                     </td>
-                                    <td className="p-2">
-                                        <span className="text-amber-700 bg-amber-100 px-2 py-0.5 rounded text-xs border border-amber-200">
-                                            Rest
-                                        </span>
+                                    <td style={{ padding: "10px 14px" }}>
+                                        <Badge variant="yellow">Rest</Badge>
                                     </td>
                                 </tr>
                             ))}
                             {data.blocks.length === 0 && !(data as any).recoveryBlocks?.length && (
                                 <tr>
-                                    <td colSpan={4} className="p-4 text-center text-gray-400">
-                                        No blocks logged yet.
+                                    <td colSpan={4}>
+                                        <EmptyState
+                                            icon="·"
+                                            title="No blocks logged yet"
+                                            sub="Start a focus block above to begin tracking."
+                                        />
                                     </td>
                                 </tr>
                             )}
                         </tbody>
                     </table>
                 </div>
-            </section>
+            </Section>
         </div>
     );
 }

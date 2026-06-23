@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
+import { BrowserRouter, Routes, Route, NavLink, useLocation } from "react-router-dom";
 import Today from "./pages/Today";
 import DayView from "./pages/DayView";
 import WeekView from "./pages/WeekView";
@@ -12,15 +12,224 @@ import ProjectDataView from "./pages/ProjectDataView";
 import Activity from "./pages/Activity";
 import { CopilotBlade } from "./components/CopilotBlade";
 
-function App() {
+// ── Nav items ─────────────────────────────────────────────────────────────────
+
+const NAV = [
+  {
+    group: "Daily",
+    items: [
+      { to: "/",       label: "Today",    icon: "◎" },
+      { to: "/todos",  label: "Todos",    icon: "✓" },
+      { to: "/day",    label: "Day",      icon: "▦" },
+    ],
+  },
+  {
+    group: "Sprint",
+    items: [
+      { to: "/week",    label: "Sprint",    icon: "⎇" },
+      { to: "/sprints", label: "Summaries", icon: "≡" },
+      { to: "/weekend", label: "Review",    icon: "◈" },
+      { to: "/activity",label: "Activity",  icon: "⌁" },
+    ],
+  },
+  {
+    group: "Projects",
+    items: [
+      { to: "/projects/dashboard", label: "Dashboard", icon: "⊞" },
+      { to: "/project",            label: "Config",     icon: "⚙" },
+    ],
+  },
+];
+
+// ── Sidebar ───────────────────────────────────────────────────────────────────
+
+function Sidebar({ onCopilot }: { onCopilot: () => void }) {
+  const location = useLocation();
+
+  return (
+    <aside
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        width: "var(--sidebar-w)",
+        height: "100vh",
+        background: "var(--surface)",
+        borderRight: "1px solid var(--border)",
+        display: "flex",
+        flexDirection: "column",
+        zIndex: 30,
+        overflow: "hidden",
+      }}
+    >
+      {/* Logo */}
+      <div
+        style={{
+          padding: "16px 16px 12px",
+          borderBottom: "1px solid var(--border)",
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+        }}
+      >
+        <span style={{ color: "var(--accent)", fontSize: 16, fontWeight: 700 }}>✦</span>
+        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", letterSpacing: "-0.01em" }}>
+          Process Dash
+        </span>
+      </div>
+
+      {/* Nav */}
+      <nav style={{ flex: 1, overflowY: "auto", padding: "8px 8px" }}>
+        {NAV.map((group) => (
+          <div key={group.group} style={{ marginBottom: 4 }}>
+            <div
+              style={{
+                fontSize: 10,
+                fontWeight: 600,
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                color: "var(--text-3)",
+                padding: "8px 8px 4px",
+              }}
+            >
+              {group.group}
+            </div>
+            {group.items.map((item) => {
+              const active =
+                item.to === "/"
+                  ? location.pathname === "/"
+                  : location.pathname.startsWith(item.to);
+              return (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end={item.to === "/"}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    padding: "6px 8px",
+                    borderRadius: 6,
+                    fontSize: 13,
+                    fontWeight: active ? 500 : 400,
+                    color: active ? "var(--text)" : "var(--text-2)",
+                    background: active ? "var(--surface-2)" : "transparent",
+                    textDecoration: "none",
+                    transition: "background 0.1s, color 0.1s",
+                    marginBottom: 1,
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!active) {
+                      (e.currentTarget as HTMLElement).style.background = "var(--surface-2)";
+                      (e.currentTarget as HTMLElement).style.color = "var(--text)";
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!active) {
+                      (e.currentTarget as HTMLElement).style.background = "transparent";
+                      (e.currentTarget as HTMLElement).style.color = "var(--text-2)";
+                    }
+                  }}
+                >
+                  <span style={{ fontSize: 13, width: 16, textAlign: "center", flexShrink: 0 }}>
+                    {item.icon}
+                  </span>
+                  {item.label}
+                  {active && (
+                    <span
+                      style={{
+                        marginLeft: "auto",
+                        width: 4,
+                        height: 4,
+                        borderRadius: "50%",
+                        background: "var(--accent)",
+                        flexShrink: 0,
+                      }}
+                    />
+                  )}
+                </NavLink>
+              );
+            })}
+          </div>
+        ))}
+      </nav>
+
+      {/* Copilot button */}
+      <div style={{ padding: "8px", borderTop: "1px solid var(--border)" }}>
+        <button
+          onClick={onCopilot}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            width: "100%",
+            padding: "8px 10px",
+            borderRadius: 6,
+            fontSize: 13,
+            fontWeight: 500,
+            color: "var(--accent)",
+            background: "var(--accent-bg)",
+            border: "1px solid rgba(129,140,248,0.2)",
+            cursor: "pointer",
+            fontFamily: "inherit",
+            transition: "opacity 0.15s",
+          }}
+          onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.opacity = "0.8")}
+          onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.opacity = "1")}
+          title="Open Copilot (⌘K)"
+        >
+          <span style={{ fontSize: 14 }}>✦</span>
+          <span style={{ flex: 1, textAlign: "left" }}>Copilot</span>
+          <kbd
+            style={{
+              fontSize: 10,
+              background: "rgba(129,140,248,0.15)",
+              border: "1px solid rgba(129,140,248,0.2)",
+              borderRadius: 3,
+              padding: "1px 4px",
+              color: "var(--accent)",
+              fontFamily: "inherit",
+            }}
+          >
+            ⌘K
+          </kbd>
+        </button>
+      </div>
+    </aside>
+  );
+}
+
+// ── Layout wrapper ────────────────────────────────────────────────────────────
+
+function Layout({ children, onCopilot }: { children: React.ReactNode; onCopilot: () => void }) {
+  return (
+    <div style={{ display: "flex", minHeight: "100vh" }}>
+      <Sidebar onCopilot={onCopilot} />
+      <main
+        style={{
+          marginLeft: "var(--sidebar-w)",
+          flex: 1,
+          minWidth: 0,
+          overflowX: "hidden",
+        }}
+      >
+        {children}
+      </main>
+    </div>
+  );
+}
+
+// ── App ───────────────────────────────────────────────────────────────────────
+
+function AppInner() {
   const [bladeOpen, setBladeOpen] = useState(false);
 
-  // ⌘K / Ctrl+K toggles the blade
+  // ⌘K / Ctrl+K
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
-        setBladeOpen((prev) => !prev);
+        setBladeOpen((v) => !v);
       }
     };
     window.addEventListener("keydown", handler);
@@ -28,52 +237,28 @@ function App() {
   }, []);
 
   return (
-    <BrowserRouter>
-      <div className="min-h-screen bg-white text-gray-900 font-sans">
-        <nav className="border-b p-4 mb-4">
-          <ul className="flex gap-6 max-w-5xl mx-auto items-center">
-            <li><Link to="/" className="font-bold hover:text-blue-600">Today</Link></li>
-            <li><Link to="/todos" className="hover:text-blue-600">Todos</Link></li>
-            <li><Link to="/day" className="hover:text-blue-600">Day Report</Link></li>
-            <li><Link to="/week" className="hover:text-blue-600">Week Report</Link></li>
-            <li><Link to="/activity" className="hover:text-blue-600 font-semibold text-blue-700">Activity</Link></li>
-            <li><Link to="/weekend" className="hover:text-blue-600 text-gray-400">Weekend</Link></li>
-            <li><Link to="/sprints" className="hover:text-blue-600">Sprints</Link></li>
-            <li><Link to="/projects/dashboard" className="text-blue-600 font-bold hover:underline">Projects</Link></li>
-            <li><Link to="/project" className="hover:text-blue-600">Config</Link></li>
-            {/* Copilot toggle — right-aligned */}
-            <li className="ml-auto">
-              <button
-                onClick={() => setBladeOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition-colors"
-                title="Open Copilot (⌘K)"
-              >
-                <span className="text-xs">✦</span>
-                Copilot
-                <kbd className="hidden sm:inline text-[10px] opacity-60 bg-indigo-500 px-1 rounded">⌘K</kbd>
-              </button>
-            </li>
-          </ul>
-        </nav>
-
-        <Routes>
-          <Route path="/" element={<Today />} />
-          <Route path="/todos" element={<Todos />} />
-          <Route path="/day" element={<DayView />} />
-          <Route path="/week" element={<WeekView />} />
-          <Route path="/activity" element={<Activity />} />
-          <Route path="/weekend" element={<WeekendSummary />} />
-          <Route path="/sprints" element={<SprintSummaries />} />
-          <Route path="/projects/dashboard" element={<ProjectsDashboard />} />
-          <Route path="/projects/:id/data" element={<ProjectDataView />} />
-          <Route path="/project" element={<ProjectConfig />} />
-        </Routes>
-
-        {/* Copilot blade — mounted once at app level, available on every page */}
-        <CopilotBlade open={bladeOpen} onClose={() => setBladeOpen(false)} />
-      </div>
-    </BrowserRouter>
+    <Layout onCopilot={() => setBladeOpen(true)}>
+      <Routes>
+        <Route path="/"                    element={<Today />} />
+        <Route path="/todos"               element={<Todos />} />
+        <Route path="/day"                 element={<DayView />} />
+        <Route path="/week"                element={<WeekView />} />
+        <Route path="/activity"            element={<Activity />} />
+        <Route path="/weekend"             element={<WeekendSummary />} />
+        <Route path="/sprints"             element={<SprintSummaries />} />
+        <Route path="/projects/dashboard"  element={<ProjectsDashboard />} />
+        <Route path="/projects/:id/data"   element={<ProjectDataView />} />
+        <Route path="/project"             element={<ProjectConfig />} />
+      </Routes>
+      <CopilotBlade open={bladeOpen} onClose={() => setBladeOpen(false)} />
+    </Layout>
   );
 }
 
-export default App;
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AppInner />
+    </BrowserRouter>
+  );
+}

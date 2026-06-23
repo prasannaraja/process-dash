@@ -7,38 +7,72 @@ interface Props {
 
 export function ToolCallDetail({ toolCalls }: Props) {
   const [open, setOpen] = useState(false);
-
   if (toolCalls.length === 0) return null;
 
   return (
-    <div className="mt-1.5">
+    <div style={{ marginTop: 8 }}>
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 transition-colors"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 4,
+          fontSize: 11,
+          color: "var(--text-3)",
+          background: "transparent",
+          border: "none",
+          cursor: "pointer",
+          padding: 0,
+          fontFamily: "inherit",
+          transition: "color 0.1s",
+        }}
+        onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--text-2)")}
+        onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--text-3)")}
       >
-        <span
-          className="inline-block transition-transform duration-150"
-          style={{ transform: open ? "rotate(90deg)" : "rotate(0deg)" }}
-        >
+        <span style={{ display: "inline-block", transition: "transform 0.15s", transform: open ? "rotate(90deg)" : "none" }}>
           ▶
         </span>
         {toolCalls.length} tool{toolCalls.length !== 1 ? "s" : ""} used
       </button>
 
       {open && (
-        <div className="mt-1.5 space-y-1.5">
+        <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
           {toolCalls.map((tc, i) => (
             <div
               key={i}
-              className="rounded bg-gray-50 border border-gray-200 px-2.5 py-2 text-xs font-mono"
+              style={{
+                background: "var(--surface-3)",
+                border: "1px solid var(--border)",
+                borderRadius: 6,
+                padding: "8px 10px",
+                fontSize: 11,
+                fontFamily: "\"JetBrains Mono\", \"SF Mono\", ui-monospace, monospace",
+              }}
             >
-              <div className="font-semibold text-indigo-600 mb-1">{tc.name}</div>
+              <div style={{ color: "var(--accent)", fontWeight: 600, marginBottom: 4 }}>{tc.name}</div>
               {Object.keys(tc.args).length > 0 && (
-                <pre className="text-gray-500 whitespace-pre-wrap break-all mb-1">
+                <pre
+                  style={{
+                    color: "var(--text-3)",
+                    whiteSpace: "pre-wrap",
+                    wordBreak: "break-all",
+                    margin: "0 0 4px",
+                    fontSize: 10,
+                  }}
+                >
                   {JSON.stringify(tc.args, null, 2)}
                 </pre>
               )}
-              <div className="text-gray-400 border-t border-gray-200 pt-1 whitespace-pre-wrap break-all">
+              <div
+                style={{
+                  color: "var(--text-3)",
+                  borderTop: "1px solid var(--border)",
+                  paddingTop: 4,
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-all",
+                  fontSize: 10,
+                }}
+              >
                 {tc.result}
               </div>
             </div>

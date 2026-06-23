@@ -9,15 +9,20 @@ export function Message({ message }: Props) {
   const isUser = message.role === "user";
 
   return (
-    <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
+    <div style={{ display: "flex", justifyContent: isUser ? "flex-end" : "flex-start" }}>
       <div
-        className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
-          isUser
-            ? "bg-indigo-600 text-white rounded-br-sm"
-            : "bg-gray-100 text-gray-800 rounded-bl-sm"
-        }`}
+        style={{
+          maxWidth: "85%",
+          borderRadius: isUser ? "12px 12px 2px 12px" : "12px 12px 12px 2px",
+          padding: "9px 13px",
+          fontSize: 13,
+          lineHeight: 1.55,
+          background: isUser ? "var(--accent)" : "var(--surface-2)",
+          color: isUser ? "#fff" : "var(--text)",
+          border: isUser ? "none" : "1px solid var(--border)",
+        }}
       >
-        <div className="whitespace-pre-wrap">{message.content}</div>
+        <div style={{ whiteSpace: "pre-wrap" }}>{message.content}</div>
         {!isUser && message.toolCalls && message.toolCalls.length > 0 && (
           <ToolCallDetail toolCalls={message.toolCalls} />
         )}

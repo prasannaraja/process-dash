@@ -1,5 +1,14 @@
 import { useState, useEffect, useRef } from "react";
 import { api, type Todo } from "../api/client";
+import {
+    Badge,
+    Button,
+    EmptyState,
+    Input,
+    Loading,
+    PageHeader,
+    Section,
+} from "../components/ui";
 
 export default function Todos() {
     const today = new Date().toISOString().split("T")[0];
@@ -40,10 +49,8 @@ export default function Todos() {
 
     const handleToggle = async (todo: Todo) => {
         if (todo.completed) {
-            // Uncomplete — pass today as completionDate (used for uncomplete event; backend ignores it for metric)
             await api.todos.uncomplete(todo.todoId, today);
         } else {
-            // Complete — record today as the completion date (Option A)
             await api.todos.complete(todo.todoId, today);
         }
         await load(date);
@@ -58,62 +65,100 @@ export default function Todos() {
     const completed = todos.filter((t) => t.completed);
 
     return (
-        <div className="p-4 max-w-2xl mx-auto space-y-6">
-            <header className="flex items-center justify-between">
-                <h1 className="text-2xl font-bold">Todos</h1>
-                <input
-                    type="date"
-                    className="border p-1 rounded text-sm"
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                />
-            </header>
+        <div style={{ padding: "28px 32px", maxWidth: 960, margin: "0 auto" }}>
+            <PageHeader
+                title="Todos"
+                sub={date === today ? "Today" : date}
+                right={
+                    <input
+                        type="date"
+                        value={date}
+                        onChange={(e) => setDate(e.target.value)}
+                        style={{
+                            background: "var(--surface-2)",
+                            border: "1px solid var(--border)",
+                            color: "var(--text)",
+                            borderRadius: 6,
+                            padding: "6px 10px",
+                            fontSize: 13,
+                            fontFamily: "inherit",
+                        }}
+                    />
+                }
+            />
 
             {/* Progress bar */}
             {todos.length > 0 && (
-                <div className="space-y-1">
-                    <div className="flex justify-between text-xs text-gray-500">
-                        <span>{completed.length} of {todos.length} done</span>
-                        <span>{Math.round((completed.length / todos.length) * 100)}%</span>
+                <div style={{ marginBottom: 20 }}>
+                    <div
+                        style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            fontSize: 12,
+                            color: "var(--text-3)",
+                            marginBottom: 6,
+                        }}
+                    >
+                        <span>
+                            {completed.length} of {todos.length} done
+                        </span>
+                        <span className="mono">
+                            {Math.round((completed.length / todos.length) * 100)}%
+                        </span>
                     </div>
-                    <div className="w-full bg-gray-100 rounded-full h-2">
+                    <div
+                        style={{
+                            width: "100%",
+                            background: "var(--surface-3)",
+                            borderRadius: 99,
+                            height: 4,
+                            overflow: "hidden",
+                        }}
+                    >
                         <div
-                            className="bg-green-500 h-2 rounded-full transition-all duration-300"
-                            style={{ width: `${(completed.length / todos.length) * 100}%` }}
+                            style={{
+                                width: `${(completed.length / todos.length) * 100}%`,
+                                background: "var(--green)",
+                                height: "100%",
+                                borderRadius: 99,
+                                transition: "width 0.3s ease",
+                            }}
                         />
                     </div>
                 </div>
             )}
 
             {/* Add input */}
-            <div className="flex gap-2">
+            <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
                 <input
                     ref={inputRef}
                     type="text"
-                    className="flex-1 border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-300"
                     placeholder="Add a todo and press Enter…"
                     value={inputText}
                     onChange={(e) => setInputText(e.target.value)}
                     onKeyDown={handleKeyDown}
+                    style={{
+                        flex: 1,
+                        background: "var(--surface-2)",
+                        border: "1px solid var(--border)",
+                        color: "var(--text)",
+                        borderRadius: 6,
+                        padding: "8px 12px",
+                        fontSize: 13,
+                        fontFamily: "inherit",
+                    }}
                 />
-                <button
-                    onClick={handleAdd}
-                    disabled={!inputText.trim()}
-                    className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-40 font-medium"
-                >
+                <Button variant="primary" onClick={handleAdd} disabled={!inputText.trim()}>
                     Add
-                </button>
+                </Button>
             </div>
 
-            {loading && <p className="text-sm text-gray-400">Loading…</p>}
+            {loading && <Loading text="Loading todos…" />}
 
             {/* Pending todos */}
-            {pending.length > 0 && (
-                <section className="space-y-2">
-                    <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                        To Do ({pending.length})
-                    </h2>
-                    <ul className="space-y-1">
+            {!loading && pending.length > 0 && (
+                <Section title={`To Do (${pending.length})`}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                         {pending.map((todo) => (
                             <TodoRow
                                 key={todo.todoId}
@@ -122,17 +167,14 @@ export default function Todos() {
                                 onDelete={handleDelete}
                             />
                         ))}
-                    </ul>
-                </section>
+                    </div>
+                </Section>
             )}
 
             {/* Completed todos */}
-            {completed.length > 0 && (
-                <section className="space-y-2">
-                    <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                        Completed ({completed.length})
-                    </h2>
-                    <ul className="space-y-1">
+            {!loading && completed.length > 0 && (
+                <Section title={`Completed (${completed.length})`}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                         {completed.map((todo) => (
                             <TodoRow
                                 key={todo.todoId}
@@ -141,15 +183,16 @@ export default function Todos() {
                                 onDelete={handleDelete}
                             />
                         ))}
-                    </ul>
-                </section>
+                    </div>
+                </Section>
             )}
 
             {!loading && todos.length === 0 && (
-                <div className="text-center py-16 text-gray-400">
-                    <p className="text-4xl mb-3">✓</p>
-                    <p className="text-sm">No todos for {date === today ? "today" : date}. Add one above.</p>
-                </div>
+                <EmptyState
+                    icon="✓"
+                    title={`No todos for ${date === today ? "today" : date}`}
+                    sub="Add one above to get started."
+                />
             )}
         </div>
     );
@@ -164,45 +207,106 @@ function TodoRow({
     onToggle: (t: Todo) => void;
     onDelete: (id: string) => void;
 }) {
+    const [hovered, setHovered] = useState(false);
+
     return (
-        <li className="flex items-center gap-3 group bg-white border rounded px-3 py-2 hover:border-gray-300 transition-colors">
+        <div
+            onMouseEnter={() => setHovered(true)}
+            onMouseLeave={() => setHovered(false)}
+            style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                background: hovered ? "var(--surface-2)" : "var(--surface)",
+                border: "1px solid var(--border)",
+                borderRadius: 6,
+                padding: "8px 12px",
+                transition: "background 0.1s, border-color 0.1s",
+                borderColor: hovered ? "var(--border-2)" : "var(--border)",
+            }}
+        >
+            {/* Checkbox */}
             <button
                 onClick={() => onToggle(todo)}
-                className={`w-5 h-5 flex-shrink-0 rounded border-2 flex items-center justify-center transition-colors ${
-                    todo.completed
-                        ? "bg-green-500 border-green-500 text-white"
-                        : "border-gray-300 hover:border-green-400"
-                }`}
                 aria-label={todo.completed ? "Mark incomplete" : "Mark complete"}
+                style={{
+                    width: 18,
+                    height: 18,
+                    flexShrink: 0,
+                    borderRadius: 4,
+                    border: todo.completed
+                        ? "1px solid var(--green)"
+                        : "1px solid var(--border-2)",
+                    background: todo.completed ? "var(--green-bg)" : "transparent",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                    color: "var(--green)",
+                    fontSize: 11,
+                    padding: 0,
+                }}
             >
                 {todo.completed && (
-                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    <svg
+                        width="10"
+                        height="10"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={3}
+                    >
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M5 13l4 4L19 7"
+                        />
                     </svg>
                 )}
             </button>
 
             <span
-                className={`flex-1 text-sm ${
-                    todo.completed ? "line-through text-gray-400" : "text-gray-800"
-                }`}
+                style={{
+                    flex: 1,
+                    fontSize: 13,
+                    color: todo.completed ? "var(--text-3)" : "var(--text)",
+                    textDecoration: todo.completed ? "line-through" : "none",
+                }}
             >
                 {todo.text}
             </span>
 
             {todo.completed && todo.completionDate && todo.completionDate !== todo.date && (
-                <span className="text-xs text-gray-400 hidden group-hover:inline">
+                <span
+                    style={{
+                        fontSize: 11,
+                        color: "var(--text-3)",
+                        display: hovered ? "inline" : "none",
+                    }}
+                >
                     done {todo.completionDate}
                 </span>
             )}
 
             <button
                 onClick={() => onDelete(todo.todoId)}
-                className="text-gray-300 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity text-lg leading-none"
                 aria-label="Delete todo"
+                style={{
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    color: "var(--text-3)",
+                    fontSize: 18,
+                    lineHeight: 1,
+                    padding: "0 2px",
+                    opacity: hovered ? 1 : 0,
+                    transition: "opacity 0.1s, color 0.1s",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = "var(--red)")}
+                onMouseLeave={(e) => (e.currentTarget.style.color = "var(--text-3)")}
             >
                 ×
             </button>
-        </li>
+        </div>
     );
 }

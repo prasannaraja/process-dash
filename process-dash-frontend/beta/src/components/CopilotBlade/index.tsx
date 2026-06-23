@@ -19,19 +19,14 @@ export function CopilotBlade({ open, onClose }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  // Scroll to bottom when messages update
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
 
-  // Focus input when blade opens
   useEffect(() => {
-    if (open) {
-      setTimeout(() => inputRef.current?.focus(), 150);
-    }
+    if (open) setTimeout(() => inputRef.current?.focus(), 150);
   }, [open]);
 
-  // Close on Escape
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape" && open) onClose();
@@ -54,64 +49,149 @@ export function CopilotBlade({ open, onClose }: Props) {
     }
   };
 
-  const handleSuggestion = (text: string) => {
-    send(text);
-  };
-
   return (
     <>
-      {/* Backdrop — click to close */}
+      {/* Backdrop */}
       <div
-        className={`fixed inset-0 bg-black/20 z-40 transition-opacity duration-200 ${
-          open ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
-        }`}
         onClick={onClose}
+        style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(0,0,0,0.5)",
+          zIndex: 40,
+          opacity: open ? 1 : 0,
+          pointerEvents: open ? "auto" : "none",
+          transition: "opacity 0.2s",
+        }}
       />
 
       {/* Blade panel */}
       <div
-        className={`fixed top-0 right-0 h-full w-96 bg-white shadow-2xl z-50 flex flex-col transition-transform duration-250 ease-in-out ${
-          open ? "translate-x-0" : "translate-x-full"
-        }`}
+        style={{
+          position: "fixed",
+          top: 0,
+          right: 0,
+          height: "100vh",
+          width: 380,
+          background: "var(--surface)",
+          borderLeft: "1px solid var(--border)",
+          zIndex: 50,
+          display: "flex",
+          flexDirection: "column",
+          transform: open ? "translateX(0)" : "translateX(100%)",
+          transition: "transform 0.22s cubic-bezier(0.4,0,0.2,1)",
+        }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 shrink-0">
-          <div className="flex items-center gap-2">
-            <span className="text-indigo-600 font-bold text-base">✦</span>
-            <span className="font-semibold text-gray-800 text-sm">Copilot</span>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "12px 16px",
+            borderBottom: "1px solid var(--border)",
+            flexShrink: 0,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ color: "var(--accent)", fontSize: 14, fontWeight: 700 }}>✦</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>Copilot</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
             <button
               onClick={clearSession}
-              title="New conversation"
-              className="text-xs text-gray-400 hover:text-gray-600 transition-colors px-2 py-1 rounded hover:bg-gray-100"
+              style={{
+                fontSize: 11,
+                color: "var(--text-3)",
+                background: "transparent",
+                border: "1px solid var(--border)",
+                borderRadius: 4,
+                padding: "3px 8px",
+                cursor: "pointer",
+                fontFamily: "inherit",
+                transition: "color 0.1s",
+              }}
+              onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--text-2)")}
+              onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--text-3)")}
             >
               New chat
             </button>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-700 transition-colors text-lg leading-none"
-              aria-label="Close copilot"
+              aria-label="Close"
+              style={{
+                fontSize: 16,
+                color: "var(--text-3)",
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                padding: "4px 6px",
+                lineHeight: 1,
+                borderRadius: 4,
+                transition: "color 0.1s",
+              }}
+              onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--text)")}
+              onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--text-3)")}
             >
               ✕
             </button>
           </div>
         </div>
 
-        {/* Message thread */}
-        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+        {/* Thread */}
+        <div
+          style={{
+            flex: 1,
+            overflowY: "auto",
+            padding: "16px",
+            display: "flex",
+            flexDirection: "column",
+            gap: 12,
+          }}
+        >
           {messages.length === 0 && !isLoading && (
-            <div className="flex flex-col items-center justify-center h-full gap-4 text-center">
-              <div className="text-3xl">✦</div>
-              <p className="text-sm text-gray-500 max-w-[220px]">
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                height: "100%",
+                gap: 16,
+                textAlign: "center",
+              }}
+            >
+              <span style={{ fontSize: 28, color: "var(--accent)" }}>✦</span>
+              <p style={{ fontSize: 13, color: "var(--text-2)", maxWidth: 220, margin: 0 }}>
                 Ask me anything about your day, sprint, or what to log.
               </p>
-              <div className="flex flex-col gap-2 w-full mt-2">
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, width: "100%" }}>
                 {SUGGESTIONS.map((s) => (
                   <button
                     key={s}
-                    onClick={() => handleSuggestion(s)}
-                    className="text-xs text-left px-3 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-700 transition-colors"
+                    onClick={() => send(s)}
+                    style={{
+                      textAlign: "left",
+                      fontSize: 12,
+                      padding: "8px 12px",
+                      background: "var(--surface-2)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 6,
+                      color: "var(--text-2)",
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                      transition: "border-color 0.1s, color 0.1s",
+                    }}
+                    onMouseEnter={(e) => {
+                      const el = e.currentTarget as HTMLElement;
+                      el.style.borderColor = "var(--accent)";
+                      el.style.color = "var(--text)";
+                    }}
+                    onMouseLeave={(e) => {
+                      const el = e.currentTarget as HTMLElement;
+                      el.style.borderColor = "var(--border)";
+                      el.style.color = "var(--text-2)";
+                    }}
                   >
                     {s}
                   </button>
@@ -124,26 +204,63 @@ export function CopilotBlade({ open, onClose }: Props) {
             <Message key={msg.id} message={msg} />
           ))}
 
-          {/* Loading indicator */}
           {isLoading && (
-            <div className="flex justify-start">
-              <div className="bg-gray-100 rounded-2xl rounded-bl-sm px-3.5 py-2.5">
-                <div className="flex gap-1 items-center h-4">
-                  <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                  <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                  <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
-                </div>
+            <div style={{ display: "flex", justifyContent: "flex-start" }}>
+              <div
+                style={{
+                  background: "var(--surface-2)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "12px 12px 12px 2px",
+                  padding: "10px 14px",
+                  display: "flex",
+                  gap: 4,
+                  alignItems: "center",
+                }}
+              >
+                {[0, 150, 300].map((delay) => (
+                  <span
+                    key={delay}
+                    style={{
+                      width: 5,
+                      height: 5,
+                      borderRadius: "50%",
+                      background: "var(--text-3)",
+                      display: "inline-block",
+                      animation: "bounce 1.2s ease-in-out infinite",
+                      animationDelay: `${delay}ms`,
+                    }}
+                  />
+                ))}
               </div>
             </div>
           )}
 
-          {/* Error */}
           {error && (
-            <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-              {error}
+            <div
+              style={{
+                fontSize: 12,
+                color: "var(--red)",
+                background: "var(--red-bg)",
+                border: "1px solid rgba(248,113,113,0.2)",
+                borderRadius: 6,
+                padding: "8px 12px",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <span>{error}</span>
               <button
-                onClick={() => send(input)}
-                className="ml-2 underline hover:no-underline"
+                onClick={handleSend}
+                style={{
+                  fontSize: 11,
+                  color: "var(--red)",
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                  textDecoration: "underline",
+                  fontFamily: "inherit",
+                }}
               >
                 retry
               </button>
@@ -153,9 +270,25 @@ export function CopilotBlade({ open, onClose }: Props) {
           <div ref={bottomRef} />
         </div>
 
-        {/* Input area */}
-        <div className="shrink-0 border-t border-gray-200 px-3 py-3">
-          <div className="flex items-end gap-2 bg-gray-50 rounded-xl border border-gray-200 px-3 py-2 focus-within:border-indigo-400 focus-within:ring-1 focus-within:ring-indigo-200 transition-all">
+        {/* Input */}
+        <div
+          style={{
+            flexShrink: 0,
+            borderTop: "1px solid var(--border)",
+            padding: "12px",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "flex-end",
+              gap: 8,
+              background: "var(--surface-2)",
+              border: "1px solid var(--border)",
+              borderRadius: 8,
+              padding: "8px 10px",
+            }}
+          >
             <textarea
               ref={inputRef}
               value={input}
@@ -163,22 +296,48 @@ export function CopilotBlade({ open, onClose }: Props) {
               onKeyDown={handleKeyDown}
               placeholder="Message copilot… (Enter to send)"
               rows={1}
-              className="flex-1 bg-transparent text-sm text-gray-800 placeholder-gray-400 resize-none outline-none max-h-32 overflow-y-auto leading-5"
-              style={{ fieldSizing: "content" } as React.CSSProperties}
               disabled={isLoading}
+              style={{
+                flex: 1,
+                background: "transparent",
+                border: "none",
+                color: "var(--text)",
+                fontSize: 13,
+                fontFamily: "inherit",
+                resize: "none",
+                outline: "none",
+                maxHeight: 120,
+                overflowY: "auto",
+                lineHeight: 1.5,
+                padding: 0,
+                fieldSizing: "content",
+              } as React.CSSProperties}
             />
             <button
               onClick={handleSend}
               disabled={!input.trim() || isLoading}
-              className="shrink-0 w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed hover:bg-indigo-700 transition-colors"
               aria-label="Send"
+              style={{
+                width: 28,
+                height: 28,
+                borderRadius: 6,
+                background: !input.trim() || isLoading ? "var(--surface-3)" : "var(--accent)",
+                border: "none",
+                cursor: !input.trim() || isLoading ? "not-allowed" : "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+                opacity: !input.trim() || isLoading ? 0.5 : 1,
+                transition: "background 0.15s, opacity 0.15s",
+              }}
             >
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <path d="M7 12V2M7 2L2.5 6.5M7 2L11.5 6.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+              <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+                <path d="M7 12V2M7 2L2.5 6.5M7 2L11.5 6.5" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </button>
           </div>
-          <p className="text-center text-[10px] text-gray-300 mt-1.5">
+          <p style={{ textAlign: "center", fontSize: 10, color: "var(--text-3)", margin: "6px 0 0" }}>
             Shift+Enter for new line · Esc to close
           </p>
         </div>

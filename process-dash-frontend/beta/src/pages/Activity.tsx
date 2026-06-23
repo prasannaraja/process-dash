@@ -1,5 +1,14 @@
 import { useState, useEffect, useMemo } from "react";
 import { api, type ProjectDefinition, type SprintDefinition } from "../api/client";
+import {
+    Badge,
+    Button,
+    Card,
+    EmptyState,
+    Loading,
+    PageHeader,
+    Section,
+} from "../components/ui";
 
 function getTodayIsoDate(): string {
     const now = new Date();
@@ -44,7 +53,7 @@ export default function Activity() {
                     api.projects.list(),
                     api.sprints.list(),
                 ]);
-                
+
                 const projList = projectsRes.items || [];
                 setProjects(projList);
                 if (projList.length > 0) {
@@ -149,20 +158,20 @@ export default function Activity() {
 
     const copyMarkdownSummary = () => {
         let md = `# Sprint Activity Summary (${startDate} to ${endDate})\n\n`;
-        
+
         activeDays.forEach(d => {
             const rollup = dayRollups[d];
             const git = githubData?.activity?.[d];
-            
+
             const hasLocal = rollup && (rollup.blocks.length > 0 || rollup.todos.length > 0);
             const hasGit = git && (git.commits.length > 0 || git.prs.length > 0 || git.reviews.length > 0);
-            
+
             if (!hasLocal && !hasGit) return;
-            
+
             const options: Intl.DateTimeFormatOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
             const formattedDate = new Date(d + 'T00:00:00').toLocaleDateString('en-US', options);
-            md += `### 📅 ${formattedDate}\n`;
-            
+            md += `### ${formattedDate}\n`;
+
             if (rollup) {
                 if (rollup.intents && rollup.intents.length > 0) {
                     md += `- **Daily Intents**: ${rollup.intents.join(', ')}\n`;
@@ -178,7 +187,7 @@ export default function Activity() {
                     });
                 }
             }
-            
+
             if (git) {
                 if (git.commits.length > 0 || git.prs.length > 0 || git.reviews.length > 0) {
                     md += `- **Engineering Contributions**:\n`;
@@ -195,7 +204,7 @@ export default function Activity() {
             }
             md += `\n`;
         });
-        
+
         navigator.clipboard.writeText(md).then(() => {
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
@@ -204,104 +213,193 @@ export default function Activity() {
         });
     };
 
+    // Shared input style
+    const inputStyle: React.CSSProperties = {
+        background: "var(--surface-2)",
+        border: "1px solid var(--border)",
+        color: "var(--text)",
+        borderRadius: 6,
+        padding: "7px 10px",
+        fontSize: 13,
+        fontFamily: "inherit",
+        width: "100%",
+    };
+
     return (
-        <div className="max-w-6xl mx-auto p-4 space-y-6 pb-20">
-            <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-4">
-                <div className="space-y-1">
-                    <h1 className="text-2xl font-bold flex items-center gap-2">
-                        <span>🗓️</span> Unified Activity Timeline
-                    </h1>
-                    <p className="text-sm text-gray-500">
-                        Synthesize focus hours and GitHub contributions side-by-side for sprint standups.
-                    </p>
-                </div>
-                
-                <button
-                    onClick={copyMarkdownSummary}
-                    className="bg-slate-900 text-white px-4 py-2 rounded font-medium text-sm flex items-center gap-2 hover:bg-slate-800 transition active:scale-95 duration-100"
-                >
-                    <span>📋</span> {copied ? "Copied to Clipboard!" : "Copy Sprint Summary (Markdown)"}
-                </button>
-            </header>
+        <div style={{ padding: "28px 32px", maxWidth: 960, margin: "0 auto", paddingBottom: 80 }}>
+            <PageHeader
+                title="Unified Activity Timeline"
+                sub="Synthesize focus hours and GitHub contributions side-by-side for sprint standups."
+                right={
+                    <Button
+                        variant="secondary"
+                        onClick={copyMarkdownSummary}
+                    >
+                        {copied ? "Copied!" : "Copy Sprint Summary (MD)"}
+                    </Button>
+                }
+            />
 
             {/* Filter Panel */}
-            <section className="bg-gray-50 border rounded-xl p-4 grid md:grid-cols-4 gap-4 shadow-sm">
-                <div className="space-y-1">
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Project</label>
-                    <select
-                        className="border p-2 rounded-lg w-full bg-white text-sm"
-                        value={selectedProjectId}
-                        onChange={(e) => setSelectedProjectId(e.target.value)}
+            <Section title="Filters">
+                <Card style={{ padding: 16 }}>
+                    <div
+                        style={{
+                            display: "grid",
+                            gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                            gap: 12,
+                        }}
                     >
-                        {projects.map((p) => (
-                            <option key={p.id} value={p.id}>{p.name}</option>
-                        ))}
-                    </select>
-                </div>
+                        <div>
+                            <div
+                                style={{
+                                    fontSize: 11,
+                                    fontWeight: 600,
+                                    letterSpacing: "0.06em",
+                                    textTransform: "uppercase",
+                                    color: "var(--text-3)",
+                                    marginBottom: 6,
+                                }}
+                            >
+                                Project
+                            </div>
+                            <select
+                                style={inputStyle}
+                                value={selectedProjectId}
+                                onChange={(e) => setSelectedProjectId(e.target.value)}
+                            >
+                                {projects.map((p) => (
+                                    <option key={p.id} value={p.id}>{p.name}</option>
+                                ))}
+                            </select>
+                        </div>
 
-                <div className="space-y-1">
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Date Presets</label>
-                    <select
-                        className="border p-2 rounded-lg w-full bg-white text-sm"
-                        value={dateRangePreset}
-                        onChange={(e) => setDateRangePreset(e.target.value)}
-                    >
-                        {sprints.length > 0 && <option value="sprint">Current Sprint Range</option>}
-                        <option value="7d">Last 7 Days</option>
-                        <option value="14d">Last 14 Days</option>
-                        <option value="custom">Custom Date Range</option>
-                    </select>
-                </div>
+                        <div>
+                            <div
+                                style={{
+                                    fontSize: 11,
+                                    fontWeight: 600,
+                                    letterSpacing: "0.06em",
+                                    textTransform: "uppercase",
+                                    color: "var(--text-3)",
+                                    marginBottom: 6,
+                                }}
+                            >
+                                Date Preset
+                            </div>
+                            <select
+                                style={inputStyle}
+                                value={dateRangePreset}
+                                onChange={(e) => setDateRangePreset(e.target.value)}
+                            >
+                                {sprints.length > 0 && <option value="sprint">Current Sprint Range</option>}
+                                <option value="7d">Last 7 Days</option>
+                                <option value="14d">Last 14 Days</option>
+                                <option value="custom">Custom Date Range</option>
+                            </select>
+                        </div>
 
-                {dateRangePreset === "sprint" && sprints.length > 0 && (
-                    <div className="space-y-1">
-                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Select Sprint</label>
-                        <select
-                            className="border p-2 rounded-lg w-full bg-white text-sm"
-                            value={selectedSprintId}
-                            onChange={(e) => setSelectedSprintId(e.target.value)}
-                        >
-                            {sprints.map((s) => (
-                                <option key={s.id} value={s.id}>
-                                    {s.name} ({s.startDate} to {s.endDate})
-                                </option>
-                            ))}
-                        </select>
+                        {dateRangePreset === "sprint" && sprints.length > 0 && (
+                            <div>
+                                <div
+                                    style={{
+                                        fontSize: 11,
+                                        fontWeight: 600,
+                                        letterSpacing: "0.06em",
+                                        textTransform: "uppercase",
+                                        color: "var(--text-3)",
+                                        marginBottom: 6,
+                                    }}
+                                >
+                                    Select Sprint
+                                </div>
+                                <select
+                                    style={inputStyle}
+                                    value={selectedSprintId}
+                                    onChange={(e) => setSelectedSprintId(e.target.value)}
+                                >
+                                    {sprints.map((s) => (
+                                        <option key={s.id} value={s.id}>
+                                            {s.name} ({s.startDate} to {s.endDate})
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+
+                        {dateRangePreset === "custom" && (
+                            <>
+                                <div>
+                                    <div
+                                        style={{
+                                            fontSize: 11,
+                                            fontWeight: 600,
+                                            letterSpacing: "0.06em",
+                                            textTransform: "uppercase",
+                                            color: "var(--text-3)",
+                                            marginBottom: 6,
+                                        }}
+                                    >
+                                        Start Date
+                                    </div>
+                                    <input
+                                        type="date"
+                                        style={inputStyle}
+                                        value={startDate}
+                                        onChange={(e) => setStartDate(e.target.value)}
+                                    />
+                                </div>
+                                <div>
+                                    <div
+                                        style={{
+                                            fontSize: 11,
+                                            fontWeight: 600,
+                                            letterSpacing: "0.06em",
+                                            textTransform: "uppercase",
+                                            color: "var(--text-3)",
+                                            marginBottom: 6,
+                                        }}
+                                    >
+                                        End Date
+                                    </div>
+                                    <input
+                                        type="date"
+                                        style={inputStyle}
+                                        value={endDate}
+                                        onChange={(e) => setEndDate(e.target.value)}
+                                    />
+                                </div>
+                            </>
+                        )}
                     </div>
-                )}
-
-                {dateRangePreset === "custom" && (
-                    <>
-                        <div className="space-y-1">
-                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Start Date</label>
-                            <input
-                                type="date"
-                                className="border p-2 rounded-lg w-full bg-white text-sm"
-                                value={startDate}
-                                onChange={(e) => setStartDate(e.target.value)}
-                            />
-                        </div>
-                        <div className="space-y-1">
-                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">End Date</label>
-                            <input
-                                type="date"
-                                className="border p-2 rounded-lg w-full bg-white text-sm"
-                                value={endDate}
-                                onChange={(e) => setEndDate(e.target.value)}
-                            />
-                        </div>
-                    </>
-                )}
-            </section>
+                </Card>
+            </Section>
 
             {error && (
-                <div className="bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded-xl text-sm flex flex-col gap-2">
-                    <div className="font-semibold flex items-center gap-2">
-                        <span>⚠️</span> Note regarding GitHub integration:
-                    </div>
+                <div
+                    style={{
+                        background: "var(--yellow-bg)",
+                        border: "1px solid rgba(251,191,36,0.2)",
+                        color: "var(--yellow)",
+                        padding: "12px 16px",
+                        borderRadius: 8,
+                        fontSize: 13,
+                        marginBottom: 20,
+                    }}
+                >
+                    <div style={{ fontWeight: 600, marginBottom: 4 }}>Note regarding GitHub integration:</div>
                     <div>{error}</div>
                     {error.includes("configured") && (
-                        <a href="/project" className="text-blue-600 underline font-medium hover:text-blue-800 mt-1 inline-block">
+                        <a
+                            href="/project"
+                            style={{
+                                color: "var(--accent)",
+                                textDecoration: "underline",
+                                fontSize: 12,
+                                display: "inline-block",
+                                marginTop: 6,
+                            }}
+                        >
                             Configure GitHub parameters in settings &rarr;
                         </a>
                     )}
@@ -309,213 +407,573 @@ export default function Activity() {
             )}
 
             {loading ? (
-                <div className="text-center py-20 text-gray-500 space-y-3">
-                    <div className="animate-spin text-3xl inline-block">⏳</div>
-                    <div>Fetching timeline activity & GitHub check-ins...</div>
-                </div>
+                <Loading text="Fetching timeline activity & GitHub check-ins…" />
             ) : (
-                <div className="space-y-6">
+                <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
                     {githubData?.configured === false && (
-                        <div className="bg-slate-50 border border-slate-200 rounded-xl p-8 text-center max-w-xl mx-auto space-y-4 shadow-sm">
-                            <div className="text-4xl">🐙</div>
-                            <h3 className="text-lg font-bold text-slate-800">GitHub Activity Not Integrated</h3>
-                            <p className="text-sm text-slate-500 leading-relaxed">
+                        <Card style={{ padding: 32, textAlign: "center", maxWidth: 480, margin: "0 auto" }}>
+                            <div style={{ fontSize: 28, marginBottom: 12 }}>⚙</div>
+                            <div
+                                style={{
+                                    fontSize: 15,
+                                    fontWeight: 600,
+                                    color: "var(--text)",
+                                    marginBottom: 8,
+                                }}
+                            >
+                                GitHub Activity Not Integrated
+                            </div>
+                            <p
+                                style={{
+                                    fontSize: 13,
+                                    color: "var(--text-2)",
+                                    lineHeight: 1.6,
+                                    marginBottom: 16,
+                                }}
+                            >
                                 Link this project to a GitHub repository to automatically visualize your commits, pull requests, and review comments side-by-side with your time-tracking logs.
                             </p>
-                            <a
-                                href="/project"
-                                className="inline-block bg-blue-600 text-white px-5 py-2 rounded-lg font-semibold hover:bg-blue-700 transition"
-                            >
-                                Setup GitHub Settings
+                            <a href="/project">
+                                <Button variant="primary">Setup GitHub Settings</Button>
                             </a>
-                        </div>
+                        </Card>
                     )}
 
                     {activeDays.length > 0 ? (
-                        <div className="space-y-6 relative before:absolute before:left-6 before:top-2 before:bottom-2 before:w-[2px] before:bg-gray-200">
+                        <div
+                            style={{
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: 16,
+                                position: "relative",
+                            }}
+                        >
+                            {/* Timeline line */}
+                            <div
+                                style={{
+                                    position: "absolute",
+                                    left: 20,
+                                    top: 16,
+                                    bottom: 16,
+                                    width: 2,
+                                    background: "var(--border)",
+                                }}
+                            />
+
                             {activeDays.map((d) => {
                                 const rollup = dayRollups[d];
                                 const git = githubData?.activity?.[d];
-                                
+
                                 const hasLocal = rollup && (rollup.blocks?.length > 0 || rollup.todos?.length > 0);
                                 const hasGit = git && (git.commits?.length > 0 || git.prs?.length > 0 || git.reviews?.length > 0);
-                                
+
                                 if (!hasLocal && !hasGit) return null;
 
                                 const options: Intl.DateTimeFormatOptions = { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' };
                                 const formattedDate = new Date(d + 'T00:00:00').toLocaleDateString('en-US', options);
 
                                 return (
-                                    <div key={d} className="relative pl-12 group">
-                                        {/* Timeline Node */}
-                                        <div className="absolute left-[18px] top-4 w-[14px] h-[14px] rounded-full border-2 border-white bg-slate-900 ring-4 ring-slate-100 group-hover:scale-110 transition duration-150"></div>
-                                        
-                                        <div className="bg-white border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition duration-200">
+                                    <div
+                                        key={d}
+                                        style={{ position: "relative", paddingLeft: 44 }}
+                                    >
+                                        {/* Timeline node */}
+                                        <div
+                                            style={{
+                                                position: "absolute",
+                                                left: 14,
+                                                top: 16,
+                                                width: 12,
+                                                height: 12,
+                                                borderRadius: "50%",
+                                                background: "var(--accent)",
+                                                border: "2px solid var(--bg)",
+                                                boxShadow: "0 0 0 2px var(--border)",
+                                            }}
+                                        />
+
+                                        <Card>
                                             {/* Date Banner */}
-                                            <div className="bg-slate-50 border-b px-4 py-3 flex items-center justify-between">
-                                                <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2">
-                                                    <span>📅</span> {formattedDate}
-                                                </h3>
-                                                <span className="text-xs text-gray-400 font-mono">{d}</span>
+                                            <div
+                                                style={{
+                                                    background: "var(--surface-2)",
+                                                    borderBottom: "1px solid var(--border)",
+                                                    padding: "10px 16px",
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    justifyContent: "space-between",
+                                                    borderRadius: "8px 8px 0 0",
+                                                }}
+                                            >
+                                                <span
+                                                    style={{
+                                                        fontSize: 13,
+                                                        fontWeight: 600,
+                                                        color: "var(--text)",
+                                                    }}
+                                                >
+                                                    {formattedDate}
+                                                </span>
+                                                <span
+                                                    className="mono"
+                                                    style={{ fontSize: 11, color: "var(--text-3)" }}
+                                                >
+                                                    {d}
+                                                </span>
                                             </div>
 
                                             {/* Split View */}
-                                            <div className="grid md:grid-cols-2 divide-y md:divide-y-0 md:divide-x">
-                                                {/* Left Column: Local Focus Logs */}
-                                                <div className="p-4 space-y-4">
-                                                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
-                                                        <span>⏱️</span> Daily Focus Log
-                                                    </h4>
-                                                    
+                                            <div
+                                                style={{
+                                                    display: "grid",
+                                                    gridTemplateColumns: "1fr 1fr",
+                                                }}
+                                            >
+                                                {/* Left: Focus Log */}
+                                                <div
+                                                    style={{
+                                                        padding: 16,
+                                                        borderRight: "1px solid var(--border)",
+                                                        display: "flex",
+                                                        flexDirection: "column",
+                                                        gap: 12,
+                                                    }}
+                                                >
+                                                    <div
+                                                        style={{
+                                                            fontSize: 11,
+                                                            fontWeight: 600,
+                                                            letterSpacing: "0.06em",
+                                                            textTransform: "uppercase",
+                                                            color: "var(--text-3)",
+                                                        }}
+                                                    >
+                                                        Daily Focus Log
+                                                    </div>
+
                                                     {rollup ? (
-                                                        <div className="space-y-3">
-                                                            {/* Intents */}
+                                                        <>
                                                             {rollup.intents && rollup.intents.length > 0 && (
-                                                                <div className="space-y-1">
-                                                                    <div className="text-xs text-gray-500">Daily Intents:</div>
-                                                                    <div className="flex flex-wrap gap-1.5">
+                                                                <div>
+                                                                    <div
+                                                                        style={{
+                                                                            fontSize: 11,
+                                                                            color: "var(--text-3)",
+                                                                            marginBottom: 6,
+                                                                        }}
+                                                                    >
+                                                                        Daily Intents:
+                                                                    </div>
+                                                                    <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
                                                                         {rollup.intents.map((intent: string, i: number) => (
-                                                                            <span key={i} className="text-xs bg-slate-100 border px-2 py-0.5 rounded-md text-slate-700 font-medium">
+                                                                            <Badge key={i} variant="default">
                                                                                 {intent}
-                                                                            </span>
+                                                                            </Badge>
                                                                         ))}
                                                                     </div>
                                                                 </div>
                                                             )}
 
-                                                            {/* Stats Grid */}
-                                                            <div className="grid grid-cols-3 gap-2">
-                                                                <div className="bg-blue-50/50 border border-blue-100 rounded-lg p-2 text-center">
-                                                                    <div className="text-sm font-bold text-blue-800">{rollup.metrics?.totalActiveLabel || "0m"}</div>
-                                                                    <div className="text-[10px] uppercase text-blue-500 font-medium">Active</div>
+                                                            <div
+                                                                style={{
+                                                                    display: "grid",
+                                                                    gridTemplateColumns: "1fr 1fr 1fr",
+                                                                    gap: 6,
+                                                                }}
+                                                            >
+                                                                <div
+                                                                    style={{
+                                                                        background: "var(--accent-bg)",
+                                                                        border: "1px solid rgba(129,140,248,0.15)",
+                                                                        borderRadius: 6,
+                                                                        padding: "8px 6px",
+                                                                        textAlign: "center",
+                                                                    }}
+                                                                >
+                                                                    <div
+                                                                        className="mono"
+                                                                        style={{
+                                                                            fontSize: 13,
+                                                                            fontWeight: 700,
+                                                                            color: "var(--accent)",
+                                                                        }}
+                                                                    >
+                                                                        {rollup.metrics?.totalActiveLabel || "0m"}
+                                                                    </div>
+                                                                    <div
+                                                                        style={{
+                                                                            fontSize: 10,
+                                                                            textTransform: "uppercase",
+                                                                            color: "var(--text-3)",
+                                                                            marginTop: 2,
+                                                                        }}
+                                                                    >
+                                                                        Active
+                                                                    </div>
                                                                 </div>
-                                                                <div className="bg-emerald-50/50 border border-emerald-100 rounded-lg p-2 text-center">
-                                                                    <div className="text-sm font-bold text-emerald-800">{rollup.metrics?.focusBlocks || 0}</div>
-                                                                    <div className="text-[10px] uppercase text-emerald-500 font-medium">Focus</div>
+                                                                <div
+                                                                    style={{
+                                                                        background: "var(--green-bg)",
+                                                                        border: "1px solid rgba(74,222,128,0.15)",
+                                                                        borderRadius: 6,
+                                                                        padding: "8px 6px",
+                                                                        textAlign: "center",
+                                                                    }}
+                                                                >
+                                                                    <div
+                                                                        className="mono"
+                                                                        style={{
+                                                                            fontSize: 13,
+                                                                            fontWeight: 700,
+                                                                            color: "var(--green)",
+                                                                        }}
+                                                                    >
+                                                                        {rollup.metrics?.focusBlocks || 0}
+                                                                    </div>
+                                                                    <div
+                                                                        style={{
+                                                                            fontSize: 10,
+                                                                            textTransform: "uppercase",
+                                                                            color: "var(--text-3)",
+                                                                            marginTop: 2,
+                                                                        }}
+                                                                    >
+                                                                        Focus
+                                                                    </div>
                                                                 </div>
-                                                                <div className="bg-red-50/50 border border-red-100 rounded-lg p-2 text-center">
-                                                                    <div className="text-sm font-bold text-red-800">{rollup.metrics?.interruptedBlocks || 0}</div>
-                                                                    <div className="text-[10px] uppercase text-red-500 font-medium">Intr.</div>
+                                                                <div
+                                                                    style={{
+                                                                        background: "var(--red-bg)",
+                                                                        border: "1px solid rgba(248,113,113,0.15)",
+                                                                        borderRadius: 6,
+                                                                        padding: "8px 6px",
+                                                                        textAlign: "center",
+                                                                    }}
+                                                                >
+                                                                    <div
+                                                                        className="mono"
+                                                                        style={{
+                                                                            fontSize: 13,
+                                                                            fontWeight: 700,
+                                                                            color: "var(--red)",
+                                                                        }}
+                                                                    >
+                                                                        {rollup.metrics?.interruptedBlocks || 0}
+                                                                    </div>
+                                                                    <div
+                                                                        style={{
+                                                                            fontSize: 10,
+                                                                            textTransform: "uppercase",
+                                                                            color: "var(--text-3)",
+                                                                            marginTop: 2,
+                                                                        }}
+                                                                    >
+                                                                        Intr.
+                                                                    </div>
                                                                 </div>
                                                             </div>
 
-                                                            {/* Completed Todos */}
                                                             {rollup.todos && rollup.todos.filter((t: any) => t.completed).length > 0 ? (
-                                                                <div className="space-y-1">
-                                                                    <div className="text-xs text-gray-500">Completed Todos:</div>
-                                                                    <ul className="text-xs space-y-1 pl-4 list-disc text-slate-600">
-                                                                        {rollup.todos.filter((t: any) => t.completed).map((todo: any) => (
-                                                                            <li key={todo.todoId}>{todo.text}</li>
-                                                                        ))}
+                                                                <div>
+                                                                    <div
+                                                                        style={{
+                                                                            fontSize: 11,
+                                                                            color: "var(--text-3)",
+                                                                            marginBottom: 4,
+                                                                        }}
+                                                                    >
+                                                                        Completed Todos:
+                                                                    </div>
+                                                                    <ul
+                                                                        style={{
+                                                                            margin: 0,
+                                                                            paddingLeft: 16,
+                                                                            fontSize: 12,
+                                                                            color: "var(--text-2)",
+                                                                            lineHeight: 1.7,
+                                                                        }}
+                                                                    >
+                                                                        {rollup.todos
+                                                                            .filter((t: any) => t.completed)
+                                                                            .map((todo: any) => (
+                                                                                <li key={todo.todoId}>{todo.text}</li>
+                                                                            ))}
                                                                     </ul>
                                                                 </div>
                                                             ) : (
-                                                                <div className="text-xs text-gray-400 italic">No todos completed this day.</div>
+                                                                <div
+                                                                    style={{
+                                                                        fontSize: 12,
+                                                                        color: "var(--text-3)",
+                                                                        fontStyle: "italic",
+                                                                    }}
+                                                                >
+                                                                    No todos completed this day.
+                                                                </div>
                                                             )}
-                                                        </div>
+                                                        </>
                                                     ) : (
-                                                        <div className="text-xs text-gray-400 italic">No daily logs recorded.</div>
+                                                        <div
+                                                            style={{
+                                                                fontSize: 12,
+                                                                color: "var(--text-3)",
+                                                                fontStyle: "italic",
+                                                            }}
+                                                        >
+                                                            No daily logs recorded.
+                                                        </div>
                                                     )}
                                                 </div>
 
-                                                {/* Right Column: GitHub Contributions */}
-                                                <div className="p-4 space-y-4 bg-slate-50/30">
-                                                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
-                                                        <span>🐙</span> Engineering Contributions
-                                                    </h4>
+                                                {/* Right: GitHub */}
+                                                <div
+                                                    style={{
+                                                        padding: 16,
+                                                        background: "rgba(255,255,255,0.01)",
+                                                        display: "flex",
+                                                        flexDirection: "column",
+                                                        gap: 12,
+                                                    }}
+                                                >
+                                                    <div
+                                                        style={{
+                                                            fontSize: 11,
+                                                            fontWeight: 600,
+                                                            letterSpacing: "0.06em",
+                                                            textTransform: "uppercase",
+                                                            color: "var(--text-3)",
+                                                        }}
+                                                    >
+                                                        Engineering Contributions
+                                                    </div>
 
                                                     {hasGit ? (
-                                                        <div className="space-y-3">
+                                                        <>
                                                             {/* Commits */}
                                                             {git.commits?.length > 0 && (
-                                                                <div className="space-y-1.5">
-                                                                    <div className="text-xs text-gray-500 font-medium">Commits authored:</div>
-                                                                    <ul className="space-y-1.5">
+                                                                <div>
+                                                                    <div
+                                                                        style={{
+                                                                            fontSize: 11,
+                                                                            color: "var(--text-3)",
+                                                                            marginBottom: 6,
+                                                                        }}
+                                                                    >
+                                                                        Commits authored:
+                                                                    </div>
+                                                                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                                                                         {git.commits.map((c: any, ci: number) => (
-                                                                            <li key={ci} className="text-xs bg-white border rounded-lg p-2 flex items-start gap-2 shadow-xs hover:border-gray-300">
+                                                                            <div
+                                                                                key={ci}
+                                                                                style={{
+                                                                                    display: "flex",
+                                                                                    alignItems: "flex-start",
+                                                                                    gap: 8,
+                                                                                    background: "var(--surface-2)",
+                                                                                    border: "1px solid var(--border)",
+                                                                                    borderRadius: 6,
+                                                                                    padding: "6px 10px",
+                                                                                    fontSize: 12,
+                                                                                }}
+                                                                            >
                                                                                 <a
                                                                                     href={c.url}
                                                                                     target="_blank"
                                                                                     rel="noreferrer"
-                                                                                    className="font-mono bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded text-[10px] border font-bold hover:underline shrink-0"
+                                                                                    className="mono"
+                                                                                    style={{
+                                                                                        background: "var(--surface-3)",
+                                                                                        color: "var(--accent)",
+                                                                                        padding: "1px 6px",
+                                                                                        borderRadius: 3,
+                                                                                        fontSize: 10,
+                                                                                        fontWeight: 700,
+                                                                                        flexShrink: 0,
+                                                                                        textDecoration: "none",
+                                                                                    }}
                                                                                 >
                                                                                     {c.sha}
                                                                                 </a>
-                                                                                <span className="text-slate-700 truncate" title={c.message}>{c.message}</span>
-                                                                            </li>
+                                                                                <span
+                                                                                    style={{
+                                                                                        color: "var(--text-2)",
+                                                                                        overflow: "hidden",
+                                                                                        textOverflow: "ellipsis",
+                                                                                        whiteSpace: "nowrap",
+                                                                                    }}
+                                                                                    title={c.message}
+                                                                                >
+                                                                                    {c.message}
+                                                                                </span>
+                                                                            </div>
                                                                         ))}
-                                                                    </ul>
+                                                                    </div>
                                                                 </div>
                                                             )}
 
                                                             {/* Pull Requests */}
                                                             {git.prs?.length > 0 && (
-                                                                <div className="space-y-1.5">
-                                                                    <div className="text-xs text-gray-500 font-medium">PRs authored:</div>
-                                                                    <ul className="space-y-1.5">
+                                                                <div>
+                                                                    <div
+                                                                        style={{
+                                                                            fontSize: 11,
+                                                                            color: "var(--text-3)",
+                                                                            marginBottom: 6,
+                                                                        }}
+                                                                    >
+                                                                        PRs authored:
+                                                                    </div>
+                                                                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                                                                         {git.prs.map((pr: any, pi: number) => (
-                                                                            <li key={pi} className="text-xs bg-white border rounded-lg p-2 flex items-center justify-between gap-2 shadow-xs">
-                                                                                <span className="flex items-center gap-1.5 truncate">
-                                                                                    <span className="text-slate-400 font-semibold font-mono shrink-0">#{pr.number}</span>
+                                                                            <div
+                                                                                key={pi}
+                                                                                style={{
+                                                                                    display: "flex",
+                                                                                    alignItems: "center",
+                                                                                    justifyContent: "space-between",
+                                                                                    gap: 8,
+                                                                                    background: "var(--surface-2)",
+                                                                                    border: "1px solid var(--border)",
+                                                                                    borderRadius: 6,
+                                                                                    padding: "6px 10px",
+                                                                                    fontSize: 12,
+                                                                                }}
+                                                                            >
+                                                                                <span
+                                                                                    style={{
+                                                                                        display: "flex",
+                                                                                        alignItems: "center",
+                                                                                        gap: 6,
+                                                                                        overflow: "hidden",
+                                                                                    }}
+                                                                                >
+                                                                                    <span
+                                                                                        className="mono"
+                                                                                        style={{
+                                                                                            color: "var(--text-3)",
+                                                                                            fontWeight: 600,
+                                                                                            flexShrink: 0,
+                                                                                        }}
+                                                                                    >
+                                                                                        #{pr.number}
+                                                                                    </span>
                                                                                     <a
                                                                                         href={pr.url}
                                                                                         target="_blank"
                                                                                         rel="noreferrer"
-                                                                                        className="text-slate-700 font-medium hover:underline hover:text-blue-600 truncate"
+                                                                                        style={{
+                                                                                            color: "var(--text-2)",
+                                                                                            fontWeight: 500,
+                                                                                            overflow: "hidden",
+                                                                                            textOverflow: "ellipsis",
+                                                                                            whiteSpace: "nowrap",
+                                                                                            textDecoration: "none",
+                                                                                        }}
                                                                                         title={pr.title}
                                                                                     >
                                                                                         {pr.title}
                                                                                     </a>
                                                                                 </span>
                                                                                 <PrBadge state={pr.state} />
-                                                                            </li>
+                                                                            </div>
                                                                         ))}
-                                                                    </ul>
+                                                                    </div>
                                                                 </div>
                                                             )}
 
                                                             {/* PR Reviews */}
                                                             {git.reviews?.length > 0 && (
-                                                                <div className="space-y-1.5">
-                                                                    <div className="text-xs text-gray-500 font-medium">Code Reviews:</div>
-                                                                    <ul className="space-y-1.5">
+                                                                <div>
+                                                                    <div
+                                                                        style={{
+                                                                            fontSize: 11,
+                                                                            color: "var(--text-3)",
+                                                                            marginBottom: 6,
+                                                                        }}
+                                                                    >
+                                                                        Code Reviews:
+                                                                    </div>
+                                                                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                                                                         {git.reviews.map((rev: any, ri: number) => (
-                                                                            <li key={ri} className="text-xs bg-white border rounded-lg p-2 flex items-center justify-between gap-2 shadow-xs">
-                                                                                <span className="flex items-center gap-1.5 truncate">
-                                                                                    <span className="text-slate-400 font-semibold font-mono shrink-0">#{rev.number}</span>
+                                                                            <div
+                                                                                key={ri}
+                                                                                style={{
+                                                                                    display: "flex",
+                                                                                    alignItems: "center",
+                                                                                    justifyContent: "space-between",
+                                                                                    gap: 8,
+                                                                                    background: "var(--surface-2)",
+                                                                                    border: "1px solid var(--border)",
+                                                                                    borderRadius: 6,
+                                                                                    padding: "6px 10px",
+                                                                                    fontSize: 12,
+                                                                                }}
+                                                                            >
+                                                                                <span
+                                                                                    style={{
+                                                                                        display: "flex",
+                                                                                        alignItems: "center",
+                                                                                        gap: 6,
+                                                                                        overflow: "hidden",
+                                                                                    }}
+                                                                                >
+                                                                                    <span
+                                                                                        className="mono"
+                                                                                        style={{
+                                                                                            color: "var(--text-3)",
+                                                                                            fontWeight: 600,
+                                                                                            flexShrink: 0,
+                                                                                        }}
+                                                                                    >
+                                                                                        #{rev.number}
+                                                                                    </span>
                                                                                     <a
                                                                                         href={rev.url}
                                                                                         target="_blank"
                                                                                         rel="noreferrer"
-                                                                                        className="text-slate-700 hover:underline hover:text-blue-600 truncate"
+                                                                                        style={{
+                                                                                            color: "var(--text-2)",
+                                                                                            overflow: "hidden",
+                                                                                            textOverflow: "ellipsis",
+                                                                                            whiteSpace: "nowrap",
+                                                                                            textDecoration: "none",
+                                                                                        }}
                                                                                         title={rev.title}
                                                                                     >
                                                                                         {rev.title}
                                                                                     </a>
                                                                                 </span>
                                                                                 <PrBadge state={rev.state} />
-                                                                            </li>
+                                                                            </div>
                                                                         ))}
-                                                                    </ul>
+                                                                    </div>
                                                                 </div>
                                                             )}
-                                                        </div>
+                                                        </>
                                                     ) : (
-                                                        <div className="text-xs text-gray-400 italic py-2">No engineering check-ins located on this date.</div>
+                                                        <div
+                                                            style={{
+                                                                fontSize: 12,
+                                                                color: "var(--text-3)",
+                                                                fontStyle: "italic",
+                                                            }}
+                                                        >
+                                                            No engineering check-ins located on this date.
+                                                        </div>
                                                     )}
                                                 </div>
                                             </div>
-                                        </div>
+                                        </Card>
                                     </div>
                                 );
                             })}
                         </div>
                     ) : (
-                        <div className="text-center py-20 bg-slate-50 border border-dashed rounded-xl text-gray-400">
-                            <div className="text-4xl mb-3">📭</div>
-                            <h3 className="text-sm font-bold text-gray-500">No activity logged in selected range</h3>
-                            <p className="text-xs text-gray-400 mt-1">Try selecting a different date range or project.</p>
-                        </div>
+                        <EmptyState
+                            icon="·"
+                            title="No activity logged in selected range"
+                            sub="Try selecting a different date range or project."
+                        />
                     )}
                 </div>
             )}
@@ -525,28 +983,8 @@ export default function Activity() {
 
 function PrBadge({ state }: { state: string }) {
     const cleanState = state.toLowerCase();
-    if (cleanState === "open") {
-        return (
-            <span className="text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.5 rounded shrink-0">
-                OPEN
-            </span>
-        );
-    } else if (cleanState === "closed") {
-        return (
-            <span className="text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200 px-1.5 py-0.5 rounded shrink-0">
-                CLOSED
-            </span>
-        );
-    } else if (cleanState === "merged") {
-        return (
-            <span className="text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200 px-1.5 py-0.5 rounded shrink-0">
-                MERGED
-            </span>
-        );
-    }
-    return (
-        <span className="text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200 px-1.5 py-0.5 rounded shrink-0 uppercase">
-            {state}
-        </span>
-    );
+    if (cleanState === "open") return <Badge variant="green">OPEN</Badge>;
+    if (cleanState === "closed") return <Badge variant="red">CLOSED</Badge>;
+    if (cleanState === "merged") return <Badge variant="accent">MERGED</Badge>;
+    return <Badge variant="default">{state.toUpperCase()}</Badge>;
 }

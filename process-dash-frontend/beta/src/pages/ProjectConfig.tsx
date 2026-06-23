@@ -1,5 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { api, type ProjectContact, type ProjectDefinition, type ProjectMember, type TeamAllocation } from "../api/client";
+import {
+    Button,
+    Card,
+    Divider,
+    Input,
+    Loading,
+    PageHeader,
+    Section,
+    Select,
+    Textarea,
+} from "../components/ui";
 
 export default function ProjectConfig() {
     const [projects, setProjects] = useState<ProjectDefinition[]>([]);
@@ -192,158 +203,458 @@ export default function ProjectConfig() {
         }
     };
 
-    if (loading) return <div className="p-8">Loading project configuration...</div>;
+    if (loading) return <Loading text="Loading project configuration…" />;
+
+    // Shared inline input style
+    const inputStyle: React.CSSProperties = {
+        background: "var(--surface-2)",
+        border: "1px solid var(--border)",
+        color: "var(--text)",
+        borderRadius: 6,
+        padding: "7px 10px",
+        fontSize: 13,
+        fontFamily: "inherit",
+        width: "100%",
+    };
+
+    const labelStyle: React.CSSProperties = {
+        fontSize: 12,
+        fontWeight: 500,
+        color: "var(--text-2)",
+        display: "block",
+        marginBottom: 4,
+    };
 
     return (
-        <div className="max-w-5xl mx-auto p-4 space-y-6 pb-20">
-            <header className="space-y-2">
-                <h1 className="text-2xl font-bold">Project Configuration</h1>
-                <p className="text-sm text-gray-600">Project details, point of contacts, team members, and allocation windows.</p>
-            </header>
+        <div style={{ padding: "28px 32px", maxWidth: 960, margin: "0 auto", paddingBottom: 80 }}>
+            <PageHeader
+                title="Project Configuration"
+                sub="Project details, point of contacts, team members, and allocation windows."
+            />
 
-            {error && <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded">{error}</div>}
-
-            <section className="bg-gray-50 border rounded p-4 space-y-3">
-                <h2 className="font-semibold">Create Project</h2>
-                <div className="grid md:grid-cols-3 gap-3">
-                    <input className="border p-2 rounded" placeholder="Project name" value={newProjectName} onChange={(e) => setNewProjectName(e.target.value)} />
-                    <input className="border p-2 rounded" placeholder="Description" value={newProjectDescription} onChange={(e) => setNewProjectDescription(e.target.value)} />
-                    <button className="bg-blue-600 text-white px-3 py-2 rounded" onClick={handleCreateProject}>Create</button>
+            {error && (
+                <div
+                    style={{
+                        background: "var(--red-bg)",
+                        border: "1px solid rgba(248,113,113,0.2)",
+                        color: "var(--red)",
+                        padding: "12px 16px",
+                        borderRadius: 8,
+                        fontSize: 13,
+                        marginBottom: 20,
+                    }}
+                >
+                    {error}
                 </div>
-            </section>
+            )}
 
-            <section className="bg-white border rounded p-4 space-y-4">
-                <h2 className="font-semibold">Selected Project</h2>
-                <select className="border p-2 rounded w-full" value={projectId} onChange={(e) => onProjectChange(e.target.value)}>
-                    {projects.map((p) => (
-                        <option key={p.id} value={p.id}>{p.name}</option>
-                    ))}
-                </select>
-
-                {selectedProject && (
-                    <div className="space-y-4">
-                        <div className="grid md:grid-cols-2 gap-3">
-                            <div className="space-y-1">
-                                <label className="text-xs font-semibold text-gray-500">Project Name</label>
-                                <input className="border p-2 rounded w-full" value={projectName} onChange={(e) => setProjectName(e.target.value)} placeholder="Project name" />
-                            </div>
-                            <div className="space-y-1">
-                                <label className="text-xs font-semibold text-gray-500">Description</label>
-                                <input className="border p-2 rounded w-full" value={projectDescription} onChange={(e) => setProjectDescription(e.target.value)} placeholder="Description" />
-                            </div>
-                            <div className="space-y-1">
-                                <label className="text-xs font-semibold text-gray-500">Allocation Start</label>
-                                <input type="date" className="border p-2 rounded w-full" value={allocationStartDate} onChange={(e) => setAllocationStartDate(e.target.value)} />
-                            </div>
-                            <div className="space-y-1">
-                                <label className="text-xs font-semibold text-gray-500">Allocation End</label>
-                                <input type="date" className="border p-2 rounded w-full" value={allocationEndDate} onChange={(e) => setAllocationEndDate(e.target.value)} />
-                            </div>
-                            <div className="space-y-1 md:col-span-2">
-                                <label className="text-xs font-semibold text-gray-500">Default Sprint Duration (Days)</label>
-                                <input type="number" min={1} max={60} className="border p-2 rounded w-full" value={defaultSprintDurationDays} onChange={(e) => setDefaultSprintDurationDays(Number(e.target.value))} />
-                            </div>
-                        </div>
-
-                        <div className="border-t pt-4 mt-4 space-y-3">
-                            <h3 className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                                🐙 GitHub Integration
-                            </h3>
-                            <p className="text-xs text-gray-500">
-                                Configure a GitHub repository to automatically link commits, pull requests, and review contributions inside your daily/sprint activity timelines.
-                            </p>
-                            <div className="grid md:grid-cols-3 gap-3">
-                                <div className="space-y-1">
-                                    <label className="text-xs font-semibold text-gray-500">Repository Name (owner/repo)</label>
-                                    <input className="border p-2 rounded w-full font-mono text-sm" value={githubRepo} onChange={(e) => setGithubRepo(e.target.value)} placeholder="e.g. facebook/react" />
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-xs font-semibold text-gray-500">GitHub Username</label>
-                                    <input className="border p-2 rounded w-full font-mono text-sm" value={githubUsername} onChange={(e) => setGithubUsername(e.target.value)} placeholder="e.g. gaearon" />
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-xs font-semibold text-gray-500">Personal Access Token (PAT)</label>
-                                    <input type="password" className="border p-2 rounded w-full font-mono text-sm" value={githubToken} onChange={(e) => setGithubToken(e.target.value)} placeholder="ghp_..." />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="flex justify-end pt-2">
-                            <button className="bg-blue-600 text-white px-5 py-2 rounded hover:bg-blue-700 transition" onClick={handleSaveProject}>Save Details & Integration</button>
-                        </div>
+            {/* Create Project */}
+            <Section title="Create Project">
+                <Card style={{ padding: 16 }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 10 }}>
+                        <input
+                            placeholder="Project name"
+                            value={newProjectName}
+                            onChange={(e) => setNewProjectName(e.target.value)}
+                            style={inputStyle}
+                        />
+                        <input
+                            placeholder="Description"
+                            value={newProjectDescription}
+                            onChange={(e) => setNewProjectDescription(e.target.value)}
+                            style={inputStyle}
+                        />
+                        <Button variant="primary" onClick={handleCreateProject}>
+                            Create
+                        </Button>
                     </div>
-                )}
-            </section>
+                </Card>
+            </Section>
 
-            <section className="grid md:grid-cols-2 gap-4">
-                <div className="bg-white border rounded p-4 space-y-3">
-                    <h2 className="font-semibold">Team Members</h2>
-                    <div className="grid grid-cols-1 gap-2">
-                        <input className="border p-2 rounded" placeholder="Name" value={newMemberName} onChange={(e) => setNewMemberName(e.target.value)} />
-                        <input className="border p-2 rounded" placeholder="Email" value={newMemberEmail} onChange={(e) => setNewMemberEmail(e.target.value)} />
-                        <select className="border p-2 rounded" value={newMemberRole} onChange={(e) => setNewMemberRole(e.target.value)}>
-                            <option value="CONTRIBUTOR">CONTRIBUTOR</option>
-                            <option value="LEAD">LEAD</option>
-                            <option value="OBSERVER">OBSERVER</option>
+            {/* Selected Project */}
+            <Section title="Selected Project">
+                <Card style={{ padding: 20 }}>
+                    <div style={{ marginBottom: 16 }}>
+                        <label style={labelStyle}>Active Project</label>
+                        <select
+                            style={{ ...inputStyle }}
+                            value={projectId}
+                            onChange={(e) => onProjectChange(e.target.value)}
+                        >
+                            {projects.map((p) => (
+                                <option key={p.id} value={p.id}>{p.name}</option>
+                            ))}
                         </select>
-                        <button className="bg-slate-800 text-white px-3 py-2 rounded" onClick={handleAddMember}>Add Member</button>
                     </div>
-                    <ul className="text-sm divide-y">
-                        {members.map((m) => (
-                            <li key={m.id} className="py-2">{m.name} ({m.role}) {m.email ? `- ${m.email}` : ""}</li>
-                        ))}
-                    </ul>
-                </div>
 
-                <div className="bg-white border rounded p-4 space-y-3">
-                    <h2 className="font-semibold">Point of Contacts</h2>
-                    <div className="grid grid-cols-1 gap-2">
-                        <input className="border p-2 rounded" placeholder="Name" value={newContactName} onChange={(e) => setNewContactName(e.target.value)} />
-                        <input className="border p-2 rounded" placeholder="Email" value={newContactEmail} onChange={(e) => setNewContactEmail(e.target.value)} />
-                        <select className="border p-2 rounded" value={newContactRole} onChange={(e) => setNewContactRole(e.target.value)}>
-                            <option value="STAKEHOLDER">STAKEHOLDER</option>
-                            <option value="MANAGER">MANAGER</option>
-                            <option value="TECH_LEAD">TECH_LEAD</option>
+                    {selectedProject && (
+                        <>
+                            <div
+                                style={{
+                                    display: "grid",
+                                    gridTemplateColumns: "1fr 1fr",
+                                    gap: 12,
+                                    marginBottom: 16,
+                                }}
+                            >
+                                <div>
+                                    <label style={labelStyle}>Project Name</label>
+                                    <input
+                                        style={inputStyle}
+                                        value={projectName}
+                                        onChange={(e) => setProjectName(e.target.value)}
+                                        placeholder="Project name"
+                                    />
+                                </div>
+                                <div>
+                                    <label style={labelStyle}>Description</label>
+                                    <input
+                                        style={inputStyle}
+                                        value={projectDescription}
+                                        onChange={(e) => setProjectDescription(e.target.value)}
+                                        placeholder="Description"
+                                    />
+                                </div>
+                                <div>
+                                    <label style={labelStyle}>Allocation Start</label>
+                                    <input
+                                        type="date"
+                                        style={inputStyle}
+                                        value={allocationStartDate}
+                                        onChange={(e) => setAllocationStartDate(e.target.value)}
+                                    />
+                                </div>
+                                <div>
+                                    <label style={labelStyle}>Allocation End</label>
+                                    <input
+                                        type="date"
+                                        style={inputStyle}
+                                        value={allocationEndDate}
+                                        onChange={(e) => setAllocationEndDate(e.target.value)}
+                                    />
+                                </div>
+                                <div style={{ gridColumn: "1 / -1" }}>
+                                    <label style={labelStyle}>Default Sprint Duration (Days)</label>
+                                    <input
+                                        type="number"
+                                        min={1}
+                                        max={60}
+                                        style={inputStyle}
+                                        value={defaultSprintDurationDays}
+                                        onChange={(e) =>
+                                            setDefaultSprintDurationDays(Number(e.target.value))
+                                        }
+                                    />
+                                </div>
+                            </div>
+
+                            <Divider />
+
+                            {/* GitHub Integration */}
+                            <div style={{ marginBottom: 16 }}>
+                                <div
+                                    style={{
+                                        fontSize: 13,
+                                        fontWeight: 600,
+                                        color: "var(--text-2)",
+                                        marginBottom: 4,
+                                    }}
+                                >
+                                    GitHub Integration
+                                </div>
+                                <div
+                                    style={{
+                                        fontSize: 12,
+                                        color: "var(--text-3)",
+                                        marginBottom: 12,
+                                        lineHeight: 1.5,
+                                    }}
+                                >
+                                    Configure a GitHub repository to automatically link commits, pull requests, and review contributions inside your daily/sprint activity timelines.
+                                </div>
+                                <div
+                                    style={{
+                                        display: "grid",
+                                        gridTemplateColumns: "1fr 1fr 1fr",
+                                        gap: 12,
+                                    }}
+                                >
+                                    <div>
+                                        <label style={labelStyle}>Repository Name (owner/repo)</label>
+                                        <input
+                                            className="mono"
+                                            style={inputStyle}
+                                            value={githubRepo}
+                                            onChange={(e) => setGithubRepo(e.target.value)}
+                                            placeholder="e.g. facebook/react"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label style={labelStyle}>GitHub Username</label>
+                                        <input
+                                            className="mono"
+                                            style={inputStyle}
+                                            value={githubUsername}
+                                            onChange={(e) => setGithubUsername(e.target.value)}
+                                            placeholder="e.g. gaearon"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label style={labelStyle}>Personal Access Token (PAT)</label>
+                                        <input
+                                            type="password"
+                                            className="mono"
+                                            style={inputStyle}
+                                            value={githubToken}
+                                            onChange={(e) => setGithubToken(e.target.value)}
+                                            placeholder="ghp_..."
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                                <Button variant="primary" onClick={handleSaveProject}>
+                                    Save Details & Integration
+                                </Button>
+                            </div>
+                        </>
+                    )}
+                </Card>
+            </Section>
+
+            {/* Team Members & Contacts */}
+            <Section>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                    {/* Team Members */}
+                    <Card style={{ padding: 16 }}>
+                        <div
+                            style={{
+                                fontSize: 13,
+                                fontWeight: 600,
+                                color: "var(--text)",
+                                marginBottom: 12,
+                            }}
+                        >
+                            Team Members
+                        </div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
+                            <input
+                                placeholder="Name"
+                                value={newMemberName}
+                                onChange={(e) => setNewMemberName(e.target.value)}
+                                style={inputStyle}
+                            />
+                            <input
+                                placeholder="Email"
+                                value={newMemberEmail}
+                                onChange={(e) => setNewMemberEmail(e.target.value)}
+                                style={inputStyle}
+                            />
+                            <select
+                                style={inputStyle}
+                                value={newMemberRole}
+                                onChange={(e) => setNewMemberRole(e.target.value)}
+                            >
+                                <option value="CONTRIBUTOR">CONTRIBUTOR</option>
+                                <option value="LEAD">LEAD</option>
+                                <option value="OBSERVER">OBSERVER</option>
+                            </select>
+                            <Button variant="secondary" onClick={handleAddMember} style={{ width: "100%", justifyContent: "center" }}>
+                                Add Member
+                            </Button>
+                        </div>
+                        <div
+                            style={{
+                                borderTop: "1px solid var(--border)",
+                                paddingTop: 10,
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: 0,
+                            }}
+                        >
+                            {members.map((m) => (
+                                <div
+                                    key={m.id}
+                                    style={{
+                                        fontSize: 12,
+                                        color: "var(--text-2)",
+                                        padding: "8px 0",
+                                        borderBottom: "1px solid var(--border)",
+                                    }}
+                                >
+                                    {m.name}{" "}
+                                    <span style={{ color: "var(--text-3)" }}>
+                                        ({m.role}){m.email ? ` — ${m.email}` : ""}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    </Card>
+
+                    {/* Point of Contacts */}
+                    <Card style={{ padding: 16 }}>
+                        <div
+                            style={{
+                                fontSize: 13,
+                                fontWeight: 600,
+                                color: "var(--text)",
+                                marginBottom: 12,
+                            }}
+                        >
+                            Point of Contacts
+                        </div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
+                            <input
+                                placeholder="Name"
+                                value={newContactName}
+                                onChange={(e) => setNewContactName(e.target.value)}
+                                style={inputStyle}
+                            />
+                            <input
+                                placeholder="Email"
+                                value={newContactEmail}
+                                onChange={(e) => setNewContactEmail(e.target.value)}
+                                style={inputStyle}
+                            />
+                            <select
+                                style={inputStyle}
+                                value={newContactRole}
+                                onChange={(e) => setNewContactRole(e.target.value)}
+                            >
+                                <option value="STAKEHOLDER">STAKEHOLDER</option>
+                                <option value="MANAGER">MANAGER</option>
+                                <option value="TECH_LEAD">TECH_LEAD</option>
+                            </select>
+                            <label
+                                style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 8,
+                                    fontSize: 12,
+                                    color: "var(--text-2)",
+                                    cursor: "pointer",
+                                }}
+                            >
+                                <input
+                                    type="checkbox"
+                                    checked={newContactPrimary}
+                                    onChange={(e) => setNewContactPrimary(e.target.checked)}
+                                    style={{ width: 14, height: 14 }}
+                                />
+                                Primary Contact
+                            </label>
+                            <Button variant="secondary" onClick={handleAddContact} style={{ width: "100%", justifyContent: "center" }}>
+                                Add Contact
+                            </Button>
+                        </div>
+                        <div
+                            style={{
+                                borderTop: "1px solid var(--border)",
+                                paddingTop: 10,
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: 0,
+                            }}
+                        >
+                            {contacts.map((c) => (
+                                <div
+                                    key={c.id}
+                                    style={{
+                                        fontSize: 12,
+                                        color: "var(--text-2)",
+                                        padding: "8px 0",
+                                        borderBottom: "1px solid var(--border)",
+                                    }}
+                                >
+                                    {c.name}{" "}
+                                    <span style={{ color: "var(--text-3)" }}>
+                                        ({c.contactRole}){c.isPrimary ? " — Primary" : ""}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    </Card>
+                </div>
+            </Section>
+
+            {/* Allocation Windows */}
+            <Section title="Allocation Windows">
+                <Card style={{ padding: 16 }}>
+                    <div
+                        style={{
+                            display: "grid",
+                            gridTemplateColumns: "1fr 1fr 1fr 80px",
+                            gap: 10,
+                            marginBottom: 10,
+                        }}
+                    >
+                        <select
+                            style={inputStyle}
+                            value={allocMemberId}
+                            onChange={(e) => setAllocMemberId(e.target.value)}
+                        >
+                            <option value="">Select member</option>
+                            {members.map((m) => (
+                                <option key={m.id} value={m.id}>{m.name}</option>
+                            ))}
                         </select>
-                        <label className="text-sm">
-                            <input type="checkbox" checked={newContactPrimary} onChange={(e) => setNewContactPrimary(e.target.checked)} className="mr-2" />
-                            Primary Contact
-                        </label>
-                        <button className="bg-slate-800 text-white px-3 py-2 rounded" onClick={handleAddContact}>Add Contact</button>
+                        <input
+                            type="date"
+                            style={inputStyle}
+                            value={allocStartDate}
+                            onChange={(e) => setAllocStartDate(e.target.value)}
+                        />
+                        <input
+                            type="date"
+                            style={inputStyle}
+                            value={allocEndDate}
+                            onChange={(e) => setAllocEndDate(e.target.value)}
+                        />
+                        <input
+                            type="number"
+                            min={1}
+                            max={100}
+                            style={inputStyle}
+                            value={allocPct}
+                            onChange={(e) => setAllocPct(Number(e.target.value))}
+                        />
                     </div>
-                    <ul className="text-sm divide-y">
-                        {contacts.map((c) => (
-                            <li key={c.id} className="py-2">{c.name} ({c.contactRole}) {c.isPrimary ? "- Primary" : ""}</li>
-                        ))}
-                    </ul>
-                </div>
-            </section>
-
-            <section className="bg-white border rounded p-4 space-y-3">
-                <h2 className="font-semibold">Allocation Windows</h2>
-                <div className="grid md:grid-cols-4 gap-2">
-                    <select className="border p-2 rounded" value={allocMemberId} onChange={(e) => setAllocMemberId(e.target.value)}>
-                        <option value="">Select member</option>
-                        {members.map((m) => (
-                            <option key={m.id} value={m.id}>{m.name}</option>
-                        ))}
-                    </select>
-                    <input type="date" className="border p-2 rounded" value={allocStartDate} onChange={(e) => setAllocStartDate(e.target.value)} />
-                    <input type="date" className="border p-2 rounded" value={allocEndDate} onChange={(e) => setAllocEndDate(e.target.value)} />
-                    <input type="number" min={1} max={100} className="border p-2 rounded" value={allocPct} onChange={(e) => setAllocPct(Number(e.target.value))} />
-                    <button className="bg-blue-600 text-white px-3 py-2 rounded md:col-span-4" onClick={handleAddAllocation}>Add Allocation</button>
-                </div>
-                <ul className="text-sm divide-y">
-                    {allocations.map((a) => {
-                        const member = members.find((m) => m.id === a.teamMemberId);
-                        return (
-                            <li key={a.id} className="py-2">
-                                {member?.name || a.teamMemberId}: {a.startDate} to {a.endDate || "open"} ({a.allocationPercentage}%)
-                            </li>
-                        );
-                    })}
-                </ul>
-            </section>
+                    <Button variant="primary" onClick={handleAddAllocation} style={{ width: "100%", justifyContent: "center", marginBottom: 12 }}>
+                        Add Allocation
+                    </Button>
+                    <div
+                        style={{
+                            borderTop: "1px solid var(--border)",
+                            paddingTop: 10,
+                            display: "flex",
+                            flexDirection: "column",
+                        }}
+                    >
+                        {allocations.map((a) => {
+                            const member = members.find((m) => m.id === a.teamMemberId);
+                            return (
+                                <div
+                                    key={a.id}
+                                    style={{
+                                        fontSize: 12,
+                                        color: "var(--text-2)",
+                                        padding: "8px 0",
+                                        borderBottom: "1px solid var(--border)",
+                                    }}
+                                >
+                                    <span style={{ fontWeight: 500 }}>
+                                        {member?.name || a.teamMemberId}
+                                    </span>
+                                    <span style={{ color: "var(--text-3)" }}>
+                                        : {a.startDate} to {a.endDate || "open"} ({a.allocationPercentage}%)
+                                    </span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </Card>
+            </Section>
         </div>
     );
 }

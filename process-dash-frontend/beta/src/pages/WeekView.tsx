@@ -1,5 +1,19 @@
 import { useState, useEffect } from "react";
 import { api, type SprintDefinition, type SprintRollup, type WeeklySummaryRequest } from "../api/client";
+import {
+    Badge,
+    Button,
+    Card,
+    EmptyState,
+    Loading,
+    MetricCard,
+    PageHeader,
+    Section,
+    Select,
+    Textarea,
+    Input,
+    Divider,
+} from "../components/ui";
 
 function getTodayIsoDate(): string {
     const now = new Date();
@@ -87,17 +101,26 @@ export default function WeekView() {
         }
     };
 
-    if (loading && !data) return <div className="p-8">Loading sprint report...</div>;
+    if (loading && !data) return <Loading text="Loading sprint report…" />;
 
     return (
-        <div className="p-4 max-w-4xl mx-auto space-y-8 pb-20">
-            <header className="flex items-center gap-4 border-b pb-4">
-                <h1 className="text-2xl font-bold">Sprint Report</h1>
-                <div className="flex gap-2">
+        <div style={{ padding: "28px 32px", maxWidth: 960, margin: "0 auto", paddingBottom: 80 }}>
+            <PageHeader
+                title="Sprint Report"
+                right={
                     <select
-                        className="border p-2 rounded min-w-64"
                         value={selectedSprintId}
                         onChange={(e) => setSelectedSprintId(e.target.value)}
+                        style={{
+                            background: "var(--surface-2)",
+                            border: "1px solid var(--border)",
+                            color: "var(--text)",
+                            borderRadius: 6,
+                            padding: "6px 10px",
+                            fontSize: 13,
+                            fontFamily: "inherit",
+                            minWidth: 260,
+                        }}
                     >
                         {sprints.length === 0 && <option value="">No sprints</option>}
                         {sprints.map((s) => (
@@ -106,11 +129,21 @@ export default function WeekView() {
                             </option>
                         ))}
                     </select>
-                </div>
-            </header>
+                }
+            />
 
             {error && (
-                <div className="bg-red-50 text-red-600 p-4 rounded">
+                <div
+                    style={{
+                        background: "var(--red-bg)",
+                        border: "1px solid rgba(248,113,113,0.2)",
+                        color: "var(--red)",
+                        padding: "12px 16px",
+                        borderRadius: 8,
+                        fontSize: 13,
+                        marginBottom: 24,
+                    }}
+                >
                     Error: {error}
                 </div>
             )}
@@ -118,139 +151,221 @@ export default function WeekView() {
             {data && (
                 <>
                     {/* Metrics Grid */}
-                    <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <MetricCard label="Active Work" value={data?.metrics?.totalActiveLabel || "-"} />
-                        <MetricCard label="Total Blocks" value={data?.metrics?.totalBlocks || 0} />
-                        <MetricCard
-                            label="Interrupted"
-                            value={data?.metrics?.interruptedBlocks || 0}
-                            sub={`${Math.round((data?.metrics?.fragmentationRate || 0) * 100)}% Rate`}
-                        />
-                        <MetricCard label="Focus Blocks" value={data?.metrics?.focusBlocks || 0} />
-                        <MetricCard label="Recovery" value={data?.metrics?.totalRecoveryLabel || "-"} />
-                        {(data?.metrics?.todosCompleted !== undefined) && (
-                            <MetricCard label="Todos Done" value={data.metrics.todosCompleted} sub="this sprint" />
-                        )}
-                    </section>
+                    <Section title="Sprint Metrics">
+                        <div
+                            style={{
+                                display: "grid",
+                                gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+                                gap: 12,
+                            }}
+                        >
+                            <MetricCard label="Active Work" value={data?.metrics?.totalActiveLabel || "-"} accent />
+                            <MetricCard label="Total Blocks" value={data?.metrics?.totalBlocks || 0} />
+                            <MetricCard
+                                label="Interrupted"
+                                value={data?.metrics?.interruptedBlocks || 0}
+                                sub={`${Math.round((data?.metrics?.fragmentationRate || 0) * 100)}% Rate`}
+                                danger={(data?.metrics?.interruptedBlocks || 0) > 0}
+                            />
+                            <MetricCard label="Focus Blocks" value={data?.metrics?.focusBlocks || 0} />
+                            <MetricCard label="Recovery" value={data?.metrics?.totalRecoveryLabel || "-"} warn />
+                            {data?.metrics?.todosCompleted !== undefined && (
+                                <MetricCard label="Todos Done" value={data.metrics.todosCompleted} sub="this sprint" />
+                            )}
+                        </div>
+                    </Section>
 
                     {/* Fragmenters Table */}
-                    <section className="space-y-4">
-                        <h3 className="font-bold text-lg">Top Sources of Fragmentation</h3>
+                    <Section title="Top Sources of Fragmentation">
                         {(!data?.metrics?.topFragmenters || data.metrics.topFragmenters.length === 0) ? (
-                            <p className="text-gray-500 italic">No interruptions recorded for this sprint.</p>
+                            <EmptyState
+                                icon="✓"
+                                title="No interruptions recorded"
+                                sub="Clean sprint — no fragmentation sources found."
+                            />
                         ) : (
-                            <div className="border rounded overflow-hidden">
-                                <table className="w-full text-sm">
-                                    <thead className="bg-gray-50">
-                                        <tr>
-                                            <th className="p-3 text-left">Code</th>
-                                            <th className="p-3 text-right w-24">Count</th>
+                            <div
+                                style={{
+                                    border: "1px solid var(--border)",
+                                    borderRadius: 8,
+                                    overflow: "hidden",
+                                }}
+                            >
+                                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                                    <thead>
+                                        <tr
+                                            style={{
+                                                background: "var(--surface-2)",
+                                                borderBottom: "1px solid var(--border)",
+                                            }}
+                                        >
+                                            <th
+                                                style={{
+                                                    padding: "10px 14px",
+                                                    textAlign: "left",
+                                                    fontSize: 11,
+                                                    fontWeight: 600,
+                                                    letterSpacing: "0.06em",
+                                                    textTransform: "uppercase",
+                                                    color: "var(--text-3)",
+                                                }}
+                                            >
+                                                Code
+                                            </th>
+                                            <th
+                                                style={{
+                                                    padding: "10px 14px",
+                                                    textAlign: "right",
+                                                    width: 96,
+                                                    fontSize: 11,
+                                                    fontWeight: 600,
+                                                    letterSpacing: "0.06em",
+                                                    textTransform: "uppercase",
+                                                    color: "var(--text-3)",
+                                                }}
+                                            >
+                                                Count
+                                            </th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {data.metrics.topFragmenters.map(f => (
-                                            <tr key={f.code} className="border-t">
-                                                <td className="p-3">{f.code}</td>
-                                                <td className="p-3 text-right font-mono">{f.count}</td>
+                                            <tr
+                                                key={f.code}
+                                                style={{ borderBottom: "1px solid var(--border)" }}
+                                            >
+                                                <td style={{ padding: "10px 14px", color: "var(--text)" }}>
+                                                    <Badge variant="red">{f.code}</Badge>
+                                                </td>
+                                                <td
+                                                    className="mono"
+                                                    style={{
+                                                        padding: "10px 14px",
+                                                        textAlign: "right",
+                                                        color: "var(--text-2)",
+                                                    }}
+                                                >
+                                                    {f.count}
+                                                </td>
                                             </tr>
                                         ))}
                                     </tbody>
                                 </table>
                             </div>
                         )}
-                    </section>
+                    </Section>
 
                     {/* Reflection Form */}
-                    <section className="bg-slate-50 p-6 rounded-lg border space-y-6">
-                        <h2 className="text-xl font-bold">Weekly Reflection</h2>
-
-                        {/* 1. Identify Top Fragmenters */}
-                        <div className="space-y-2">
-                            <label className="block font-semibold text-sm">Which fragmenters were systemic issues?</label>
-                            <div className="flex flex-wrap gap-2">
-                                {data.metrics.topFragmenters.map(f => (
-                                    <button
-                                        key={f.code}
-                                        onClick={() => {
-                                            if (selectedFrag.includes(f.code)) {
-                                                setSelectedFrag(selectedFrag.filter(x => x !== f.code));
-                                            } else {
-                                                setSelectedFrag([...selectedFrag, f.code]);
-                                            }
-                                        }}
-                                        className={`px-3 py-1 rounded text-sm border ${selectedFrag.includes(f.code)
-                                            ? "bg-red-100 border-red-300 text-red-800"
-                                            : "bg-white border-gray-300 text-gray-600 hover:border-gray-400"
-                                            }`}
-                                    >
-                                        {f.code}
-                                    </button>
-                                ))}
+                    <Section title="Weekly Reflection">
+                        <Card style={{ padding: 24 }}>
+                            {/* Fragmenter tags */}
+                            <div style={{ marginBottom: 20 }}>
+                                <div
+                                    style={{
+                                        fontSize: 12,
+                                        fontWeight: 500,
+                                        color: "var(--text-2)",
+                                        marginBottom: 8,
+                                    }}
+                                >
+                                    Which fragmenters were systemic issues?
+                                </div>
+                                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                                    {data.metrics.topFragmenters.map(f => (
+                                        <button
+                                            key={f.code}
+                                            onClick={() => {
+                                                if (selectedFrag.includes(f.code)) {
+                                                    setSelectedFrag(selectedFrag.filter(x => x !== f.code));
+                                                } else {
+                                                    setSelectedFrag([...selectedFrag, f.code]);
+                                                }
+                                            }}
+                                            style={{
+                                                padding: "4px 10px",
+                                                borderRadius: 4,
+                                                fontSize: 12,
+                                                fontWeight: 600,
+                                                cursor: "pointer",
+                                                fontFamily: "inherit",
+                                                border: selectedFrag.includes(f.code)
+                                                    ? "1px solid rgba(248,113,113,0.4)"
+                                                    : "1px solid var(--border-2)",
+                                                background: selectedFrag.includes(f.code)
+                                                    ? "var(--red-bg)"
+                                                    : "var(--surface-3)",
+                                                color: selectedFrag.includes(f.code)
+                                                    ? "var(--red)"
+                                                    : "var(--text-2)",
+                                                transition: "all 0.15s",
+                                            }}
+                                        >
+                                            {f.code}
+                                        </button>
+                                    ))}
+                                </div>
+                                {data.metrics.topFragmenters.length === 0 && (
+                                    <span style={{ fontSize: 12, color: "var(--text-3)" }}>
+                                        No fragmenters to select.
+                                    </span>
+                                )}
                             </div>
-                            {data.metrics.topFragmenters.length === 0 && (
-                                <p className="text-xs text-gray-400">No fragmenters to select.</p>
-                            )}
-                        </div>
 
-                        {/* 2. Non-Performance Issues */}
-                        <div className="space-y-2">
-                            <label className="block font-semibold text-sm">
-                                What slowed you down but was <span className="underline">not</span> a performance issue?
-                            </label>
-                            <p className="text-xs text-gray-500">
-                                E.g. environment instability, lack of clarity, waiting on reviews. One per line.
-                            </p>
-                            <textarea
-                                className="w-full border p-3 rounded h-32"
-                                value={notPerfIssues}
-                                onChange={e => setNotPerfIssues(e.target.value)}
-                                placeholder="- Staging environment down for 2h..."
-                            />
-                        </div>
+                            <Divider />
 
-                        {/* 3. Structural Change */}
-                        <div className="space-y-2">
-                            <label className="block font-semibold text-sm">
-                                One structural change for next sprint?
-                            </label>
-                            <input
-                                type="text"
-                                className="w-full border p-3 rounded"
-                                value={oneChange}
-                                onChange={e => setOneChange(e.target.value)}
-                                placeholder="e.g. Block calendars Tue/Thu morning..."
-                            />
-                        </div>
+                            {/* Non-performance issues */}
+                            <div style={{ marginBottom: 20 }}>
+                                <Textarea
+                                    label="What slowed you down but was NOT a performance issue?"
+                                    rows={4}
+                                    value={notPerfIssues}
+                                    onChange={e => setNotPerfIssues(e.target.value)}
+                                    placeholder="- Staging environment down for 2h..."
+                                />
+                                <div
+                                    style={{
+                                        fontSize: 11,
+                                        color: "var(--text-3)",
+                                        marginTop: 4,
+                                    }}
+                                >
+                                    E.g. environment instability, lack of clarity, waiting on reviews. One per line.
+                                </div>
+                            </div>
 
-                        <div className="flex items-center gap-4">
-                            <button
-                                onClick={handleSave}
-                                className="bg-blue-600 text-white px-6 py-2 rounded font-medium hover:bg-blue-700"
-                            >
-                                Save Summary
-                            </button>
-                            {saved && <span className="text-green-600 font-bold animate-pulse">Saved successfully!</span>}
-                        </div>
-                    </section>
+                            {/* Structural change */}
+                            <div style={{ marginBottom: 20 }}>
+                                <Input
+                                    label="One structural change for next sprint?"
+                                    type="text"
+                                    value={oneChange}
+                                    onChange={e => setOneChange(e.target.value)}
+                                    placeholder="e.g. Block calendars Tue/Thu morning…"
+                                />
+                            </div>
+
+                            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                                <Button variant="primary" onClick={handleSave}>
+                                    Save Summary
+                                </Button>
+                                {saved && (
+                                    <span style={{ fontSize: 13, color: "var(--green)", fontWeight: 600 }}>
+                                        Saved successfully!
+                                    </span>
+                                )}
+                            </div>
+                        </Card>
+                    </Section>
                 </>
             )}
 
             {data && (data.metrics?.totalBlocks || 0) === 0 && !error && (
-                <div className="text-center py-20 text-gray-400">
-                    <h3 className="text-lg font-medium text-gray-500">No blocks recorded for this sprint.</h3>
-                    <p>Go to "Today" to start tracking your work.</p>
-                </div>
+                <EmptyState
+                    icon="·"
+                    title="No blocks recorded for this sprint"
+                    sub='Go to "Today" to start tracking your work.'
+                />
             )}
-        </div>
-    );
-}
-
-function MetricCard({ label, value, sub }: { label: string; value: number | string; sub?: string }) {
-    return (
-        <div className="border p-4 rounded shadow-sm bg-white">
-            <div className="text-2xl font-bold">{value}</div>
-            <div className="text-xs text-gray-500 font-medium uppercase tracking-wide">{label}</div>
-            {sub && <div className="text-xs text-gray-400 mt-1">{sub}</div>}
         </div>
     );
 }

@@ -1,5 +1,13 @@
 import { useState, useEffect } from "react";
 import { api, type DayRollup } from "../api/client";
+import {
+    Badge,
+    EmptyState,
+    Loading,
+    MetricCard,
+    PageHeader,
+    Section,
+} from "../components/ui";
 
 export default function DayView() {
     const [date, setDate] = useState(() => new Date().toISOString().split("T")[0]);
@@ -9,92 +17,165 @@ export default function DayView() {
         api.reports.getDay(date).then(setData).catch(console.error);
     }, [date]);
 
-    if (!data) return <div>Loading...</div>;
+    if (!data) return <Loading text="Loading daily report…" />;
 
     return (
-        <div className="p-4 max-w-4xl mx-auto space-y-6">
-            <header className="flex items-center gap-4">
-                <h1 className="text-2xl font-bold">Daily Report</h1>
-                <input
-                    type="date"
-                    className="border p-1 rounded"
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                />
-            </header>
-
-            {/* Metrics Row */}
-            <div className="grid grid-cols-4 gap-4">
-                <MetricCard label="Total Blocks" value={data.metrics.totalBlocks} />
-                <MetricCard label="Focus Blocks" value={data.metrics.focusBlocks} />
-                <MetricCard
-                    label="Interrupted"
-                    value={data.metrics.interruptedBlocks}
-                    sub={`${Math.round(data.metrics.fragmentationRate * 100)}% Rate`}
-                />
-                <MetricCard label="Active Time" value={data.metrics.totalActiveLabel || "-"} />
-                <MetricCard label="Recovery" value={data.metrics.totalRecoveryLabel || "-"} />
-                {data.metrics.todosCompleted !== undefined && (
-                    <MetricCard
-                        label="Todos Done"
-                        value={`${data.metrics.todosCompleted} / ${data.metrics.todosAdded ?? 0}`}
-                        sub="completed today"
+        <div style={{ padding: "28px 32px", maxWidth: 960, margin: "0 auto" }}>
+            <PageHeader
+                title="Daily Report"
+                sub={date}
+                right={
+                    <input
+                        type="date"
+                        value={date}
+                        onChange={(e) => setDate(e.target.value)}
+                        style={{
+                            background: "var(--surface-2)",
+                            border: "1px solid var(--border)",
+                            color: "var(--text)",
+                            borderRadius: 6,
+                            padding: "6px 10px",
+                            fontSize: 13,
+                            fontFamily: "inherit",
+                        }}
                     />
-                )}
-            </div>
+                }
+            />
 
-            {/* Table */}
-            <div className="border rounded overflow-hidden">
-                <table className="w-full text-sm">
-                    <thead className="bg-gray-100 border-b">
-                        <tr>
-                            <th className="p-3 text-left">Intent</th>
-                            <th className="p-3 text-left">Notes</th>
-                            <th className="p-3 text-left">Outcome</th>
-                            <th className="p-3 text-right">Duration</th>
-                            <th className="p-3 text-left">Interrupted?</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y">
-                        {data.blocks.map((b) => (
-                            <tr key={b.blockId} className="hover:bg-gray-50">
-                                <td className="p-3 font-medium">{b.intent}</td>
-                                <td className="p-3 text-gray-500">{b.notes || "-"}</td>
-                                <td className="p-3">{b.actualOutcome || "-"}</td>
-                                <td className="p-3 text-right">
-                                    {b.durationLabel || "-"}
-                                </td>
-                                <td className="p-3">
-                                    {b.interrupted ? (
-                                        <span className="text-red-700 font-semibold text-xs border border-red-200 bg-red-50 px-2 py-1 rounded">
-                                            {b.reasonCode}
-                                        </span>
-                                    ) : (
-                                        <span className="text-gray-300">-</span>
-                                    )}
-                                </td>
-                            </tr>
-                        ))}
-                        {data.blocks.length === 0 && (
-                            <tr>
-                                <td colSpan={5} className="p-8 text-center text-gray-500">
-                                    No activity recorded for this date.
-                                </td>
-                            </tr>
-                        )}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    );
-}
+            {/* Metrics Grid */}
+            <Section title="Metrics">
+                <div
+                    style={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+                        gap: 12,
+                    }}
+                >
+                    <MetricCard label="Total Blocks" value={data.metrics.totalBlocks} />
+                    <MetricCard label="Focus Blocks" value={data.metrics.focusBlocks} accent />
+                    <MetricCard
+                        label="Interrupted"
+                        value={data.metrics.interruptedBlocks}
+                        sub={`${Math.round(data.metrics.fragmentationRate * 100)}% Rate`}
+                        danger={data.metrics.interruptedBlocks > 0}
+                    />
+                    <MetricCard label="Active Time" value={data.metrics.totalActiveLabel || "-"} />
+                    <MetricCard label="Recovery" value={data.metrics.totalRecoveryLabel || "-"} warn />
+                    {data.metrics.todosCompleted !== undefined && (
+                        <MetricCard
+                            label="Todos Done"
+                            value={`${data.metrics.todosCompleted} / ${data.metrics.todosAdded ?? 0}`}
+                            sub="completed today"
+                        />
+                    )}
+                </div>
+            </Section>
 
-function MetricCard({ label, value, sub }: { label: string; value: number | string; sub?: string }) {
-    return (
-        <div className="border p-4 rounded shadow-sm">
-            <div className="text-2xl font-bold">{value}</div>
-            <div className="text-xs text-gray-500 font-medium uppercase tracking-wide">{label}</div>
-            {sub && <div className="text-xs text-gray-400 mt-1">{sub}</div>}
+            {/* Blocks Table */}
+            <Section title="Work Blocks">
+                <div
+                    style={{
+                        border: "1px solid var(--border)",
+                        borderRadius: 8,
+                        overflow: "hidden",
+                    }}
+                >
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                        <thead>
+                            <tr
+                                style={{
+                                    background: "var(--surface-2)",
+                                    borderBottom: "1px solid var(--border)",
+                                }}
+                            >
+                                {["Intent", "Notes", "Outcome", "Duration", "Status"].map((h, i) => (
+                                    <th
+                                        key={h}
+                                        style={{
+                                            padding: "10px 14px",
+                                            textAlign: i === 3 ? "right" : "left",
+                                            fontSize: 11,
+                                            fontWeight: 600,
+                                            letterSpacing: "0.06em",
+                                            textTransform: "uppercase",
+                                            color: "var(--text-3)",
+                                        }}
+                                    >
+                                        {h}
+                                    </th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {data.blocks.map((b) => (
+                                <tr
+                                    key={b.blockId}
+                                    style={{
+                                        borderBottom: "1px solid var(--border)",
+                                        transition: "background 0.1s",
+                                    }}
+                                    onMouseEnter={(e) =>
+                                        (e.currentTarget.style.background = "var(--surface-2)")
+                                    }
+                                    onMouseLeave={(e) =>
+                                        (e.currentTarget.style.background = "transparent")
+                                    }
+                                >
+                                    <td
+                                        style={{
+                                            padding: "10px 14px",
+                                            fontWeight: 500,
+                                            color: "var(--text)",
+                                        }}
+                                    >
+                                        {b.intent}
+                                    </td>
+                                    <td
+                                        style={{
+                                            padding: "10px 14px",
+                                            color: "var(--text-3)",
+                                            maxWidth: 200,
+                                        }}
+                                    >
+                                        {b.notes || "-"}
+                                    </td>
+                                    <td style={{ padding: "10px 14px", color: "var(--text-2)" }}>
+                                        {b.actualOutcome || "-"}
+                                    </td>
+                                    <td
+                                        className="mono"
+                                        style={{
+                                            padding: "10px 14px",
+                                            textAlign: "right",
+                                            color: "var(--text-2)",
+                                        }}
+                                    >
+                                        {b.durationLabel || "-"}
+                                    </td>
+                                    <td style={{ padding: "10px 14px" }}>
+                                        {b.interrupted ? (
+                                            <Badge variant="red">{b.reasonCode}</Badge>
+                                        ) : (
+                                            <span style={{ color: "var(--text-3)" }}>—</span>
+                                        )}
+                                    </td>
+                                </tr>
+                            ))}
+                            {data.blocks.length === 0 && (
+                                <tr>
+                                    <td colSpan={5}>
+                                        <EmptyState
+                                            icon="·"
+                                            title="No activity recorded"
+                                            sub={`Nothing logged for ${date}`}
+                                        />
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </Section>
         </div>
     );
 }

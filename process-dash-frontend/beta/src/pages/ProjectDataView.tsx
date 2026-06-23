@@ -1,6 +1,16 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { api, type Block } from "../api/client";
+import {
+    Badge,
+    Button,
+    Card,
+    EmptyState,
+    Loading,
+    MetricCard,
+    PageHeader,
+    Section,
+} from "../components/ui";
 
 export default function ProjectDataView() {
     const { id } = useParams<{ id: string }>();
@@ -15,8 +25,12 @@ export default function ProjectDataView() {
             .finally(() => setLoading(false));
     }, [id]);
 
-    if (loading) return <div className="p-4 text-center">Loading Data...</div>;
-    if (!data || !data.id) return <div className="p-4 text-center text-red-500">Project data not found.</div>;
+    if (loading) return <Loading text="Loading project data…" />;
+    if (!data || !data.id) return (
+        <div style={{ padding: "28px 32px", maxWidth: 960, margin: "0 auto" }}>
+            <div style={{ color: "var(--red)", fontSize: 13 }}>Project data not found.</div>
+        </div>
+    );
 
     // Group blocks by date
     const blocksByDate = data.blocks.reduce((acc: any, b: Block) => {
@@ -24,77 +38,148 @@ export default function ProjectDataView() {
         acc[b.date].push(b);
         return acc;
     }, {});
-    
+
     // Sort dates descending
     const datesDesc = Object.keys(blocksByDate).sort((a, b) => b.localeCompare(a));
 
     return (
-        <div className="p-4 max-w-4xl mx-auto space-y-8">
-            <header className="flex items-center gap-4">
-                <Link to="/projects/dashboard" className="text-gray-500 hover:text-black">
-                    &larr; Back
-                </Link>
-                <h1 className="text-2xl font-bold">Data View: {data.name}</h1>
-            </header>
+        <div style={{ padding: "28px 32px", maxWidth: 960, margin: "0 auto" }}>
+            <PageHeader
+                title={`Data View: ${data.name}`}
+                right={
+                    <Link to="/projects/dashboard" style={{ textDecoration: "none" }}>
+                        <Button variant="ghost" size="sm">
+                            &larr; Back
+                        </Button>
+                    </Link>
+                }
+            />
 
-            <section className="bg-gray-50 p-6 rounded-lg border">
-                <h2 className="text-lg font-bold mb-4">Lifetime Metrics</h2>
-                <div className="grid grid-cols-4 gap-4 text-center">
-                    <div className="bg-white p-3 rounded shadow-sm">
-                        <div className="text-xs text-gray-500 uppercase">Total Blocks</div>
-                        <div className="text-2xl font-bold">{data.metrics.totalBlocks}</div>
-                    </div>
-                    <div className="bg-white p-3 rounded shadow-sm">
-                        <div className="text-xs text-gray-500 uppercase">Focus</div>
-                        <div className="text-2xl font-bold text-blue-600">{data.metrics.focusBlocks}</div>
-                    </div>
-                    <div className="bg-white p-3 rounded shadow-sm">
-                        <div className="text-xs text-gray-500 uppercase">Active Time</div>
-                        <div className="text-xl font-bold pt-1">{data.metrics.totalActiveLabel || "-"}</div>
-                    </div>
-                    <div className="bg-white p-3 rounded shadow-sm text-red-700">
-                        <div className="text-xs uppercase font-medium">Fragmentation</div>
-                        <div className="text-2xl font-bold">{Math.round(data.metrics.fragmentationRate * 100)}%</div>
-                    </div>
+            {/* Lifetime Metrics */}
+            <Section title="Lifetime Metrics">
+                <div
+                    style={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+                        gap: 12,
+                    }}
+                >
+                    <MetricCard label="Total Blocks" value={data.metrics.totalBlocks} />
+                    <MetricCard label="Focus Blocks" value={data.metrics.focusBlocks} accent />
+                    <MetricCard label="Active Time" value={data.metrics.totalActiveLabel || "-"} />
+                    <MetricCard
+                        label="Fragmentation"
+                        value={`${Math.round(data.metrics.fragmentationRate * 100)}%`}
+                        danger={data.metrics.fragmentationRate > 0.3}
+                        warn={data.metrics.fragmentationRate > 0.15 && data.metrics.fragmentationRate <= 0.3}
+                    />
                 </div>
-            </section>
+            </Section>
 
-            <section>
-                <h2 className="text-xl font-bold mb-4 border-b pb-2">Event Timeline</h2>
+            {/* Event Timeline */}
+            <Section title="Event Timeline">
                 {datesDesc.length === 0 ? (
-                    <div className="text-center text-gray-500 py-8 bg-gray-50 rounded">
-                        No blocks have been logged for this project yet.
-                    </div>
+                    <EmptyState
+                        icon="·"
+                        title="No blocks logged yet"
+                        sub="No blocks have been logged for this project yet."
+                    />
                 ) : (
-                    <div className="space-y-8">
+                    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
                         {datesDesc.map(d => (
-                            <div key={d} className="space-y-3">
-                                <h3 className="font-semibold text-lg sticky top-0 bg-white py-1">{d}</h3>
-                                <div className="bg-white border rounded-lg overflow-hidden">
-                                    <table className="w-full text-sm text-left">
-                                        <thead className="bg-gray-50 text-gray-600">
-                                            <tr>
-                                                <th className="p-3">Intent</th>
-                                                <th className="p-3">Outcome</th>
-                                                <th className="p-3">Duration</th>
-                                                <th className="p-3">Status</th>
+                            <div key={d}>
+                                <div
+                                    style={{
+                                        fontSize: 13,
+                                        fontWeight: 600,
+                                        color: "var(--text-2)",
+                                        marginBottom: 8,
+                                        paddingBottom: 6,
+                                        borderBottom: "1px solid var(--border)",
+                                        position: "sticky",
+                                        top: 0,
+                                        background: "var(--bg)",
+                                        zIndex: 1,
+                                    }}
+                                >
+                                    {d}
+                                </div>
+                                <div
+                                    style={{
+                                        border: "1px solid var(--border)",
+                                        borderRadius: 8,
+                                        overflow: "hidden",
+                                    }}
+                                >
+                                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                                        <thead>
+                                            <tr
+                                                style={{
+                                                    background: "var(--surface-2)",
+                                                    borderBottom: "1px solid var(--border)",
+                                                }}
+                                            >
+                                                {["Intent", "Outcome", "Duration", "Status"].map((h) => (
+                                                    <th
+                                                        key={h}
+                                                        style={{
+                                                            padding: "10px 14px",
+                                                            textAlign: "left",
+                                                            fontSize: 11,
+                                                            fontWeight: 600,
+                                                            letterSpacing: "0.06em",
+                                                            textTransform: "uppercase",
+                                                            color: "var(--text-3)",
+                                                        }}
+                                                    >
+                                                        {h}
+                                                    </th>
+                                                ))}
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {blocksByDate[d].map((b: Block) => (
-                                                <tr key={b.blockId} className="border-t">
-                                                    <td className="p-3 font-medium">{b.intent}</td>
-                                                    <td className="p-3 text-gray-600">{b.actualOutcome || "-"}</td>
-                                                    <td className="p-3">{b.durationLabel || "-"}</td>
-                                                    <td className="p-3">
+                                                <tr
+                                                    key={b.blockId}
+                                                    style={{ borderBottom: "1px solid var(--border)" }}
+                                                    onMouseEnter={(e) =>
+                                                        (e.currentTarget.style.background = "var(--surface-2)")
+                                                    }
+                                                    onMouseLeave={(e) =>
+                                                        (e.currentTarget.style.background = "transparent")
+                                                    }
+                                                >
+                                                    <td
+                                                        style={{
+                                                            padding: "10px 14px",
+                                                            fontWeight: 500,
+                                                            color: "var(--text)",
+                                                        }}
+                                                    >
+                                                        {b.intent}
+                                                    </td>
+                                                    <td
+                                                        style={{
+                                                            padding: "10px 14px",
+                                                            color: "var(--text-2)",
+                                                        }}
+                                                    >
+                                                        {b.actualOutcome || "-"}
+                                                    </td>
+                                                    <td
+                                                        className="mono"
+                                                        style={{
+                                                            padding: "10px 14px",
+                                                            color: "var(--text-2)",
+                                                        }}
+                                                    >
+                                                        {b.durationLabel || "-"}
+                                                    </td>
+                                                    <td style={{ padding: "10px 14px" }}>
                                                         {b.interrupted ? (
-                                                            <span className="text-red-700 bg-red-50 border border-red-200 px-2 py-0.5 rounded text-xs">
-                                                                {b.reasonCode}
-                                                            </span>
+                                                            <Badge variant="red">{b.reasonCode}</Badge>
                                                         ) : (
-                                                            <span className="text-green-700 bg-green-50 border border-green-200 px-2 py-0.5 rounded text-xs">
-                                                                Done
-                                                            </span>
+                                                            <Badge variant="green">Done</Badge>
                                                         )}
                                                     </td>
                                                 </tr>
@@ -106,7 +191,7 @@ export default function ProjectDataView() {
                         ))}
                     </div>
                 )}
-            </section>
+            </Section>
         </div>
     );
 }
