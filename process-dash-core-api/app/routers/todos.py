@@ -34,7 +34,7 @@ def _build_todos_for_date(session: Session, date_str: str) -> List[dict]:
     # Fetch all todo events ordered by time
     events = session.exec(
         select(EventLog)
-        .where(EventLog.type.in_(["todo_added", "todo_completed", "todo_deleted"]))
+        .where(EventLog.type.in_(["todo_added", "todo_completed", "todo_uncompleted", "todo_deleted"]))
         .order_by(EventLog.ts)
     ).all()
 
@@ -60,6 +60,10 @@ def _build_todos_for_date(session: Session, date_str: str) -> List[dict]:
             if todo_id in todos:
                 todos[todo_id]["completed"] = True
                 todos[todo_id]["completionDate"] = p.get("completionDate")
+        elif evt.type == "todo_uncompleted":
+            if todo_id in todos:
+                todos[todo_id]["completed"] = False
+                todos[todo_id]["completionDate"] = None
         elif evt.type == "todo_deleted":
             deleted_ids.add(todo_id)
 

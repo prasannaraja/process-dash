@@ -2,7 +2,7 @@ import json
 from typing import List, Dict, Optional, Any
 from datetime import datetime, timedelta, timezone
 from sqlmodel import Session, select
-from app.models import EventLog, SprintDefinition, Project
+from app.models import EventLog, SprintDefinition, Project, UserStory
 
 def _parse_payload(event: EventLog) -> dict:
     return json.loads(event.payload)
@@ -51,6 +51,7 @@ def get_day_rollup(session: Session, date_str: str) -> Dict[str, Any]:
             if p.get("date") == date_str:
                 blocks_map[block_id] = {
                     "blockId": block_id,
+                    "storyId": p.get("storyId"),
                     "intent": p.get("intent"),
                     "notes": p.get("notes"),
                     "date": p.get("date"),
@@ -198,6 +199,7 @@ def _compute_period_metrics(session: Session, start_date: datetime, end_date: da
         if evt.type == "intent_block_started":
             blocks_map[block_id] = {
                 "blockId": block_id,
+                "storyId": p.get("storyId"),
                 "intent": p.get("intent"),
                 "notes": p.get("notes"),
                 "date": p.get("date"),
@@ -308,6 +310,42 @@ def _get_latest_sprint_summary_event(session: Session, sprint_id: str) -> Option
     ).first()
 
 
+def get_sprint_story_metrics(session: Session, sprint_id: str) -> Dict[str, Any]:
+    """
+    Derive story delivery metrics for a sprint from the user_stories table.
+    Returns counts and point totals by status bucket.
+    """
+    stories = session.exec(
+        select(UserStory)
+        .where(UserStory.sprint_id == sprint_id)
+        .where(UserStory.is_deleted == False)  # noqa: E712
+    ).all()
+
+    committed = len(stories)
+    committed_points = sum(s.story_points or 0 for s in stories)
+
+    done = [s for s in stories if s.status == "DONE"]
+    in_progress = [s for s in stories if s.status == "IN_PROGRESS"]
+    todo = [s for s in stories if s.status == "TODO"]
+    carried_over = [s for s in stories if s.status == "CARRIED_OVER"]
+
+    done_points = sum(s.story_points or 0 for s in done)
+    delivery_rate = round(len(done) / committed, 2) if committed > 0 else 0.0
+    velocity = done_points  # story points delivered
+
+    return {
+        "storiesCommitted": committed,
+        "storiesDone": len(done),
+        "storiesInProgress": len(in_progress),
+        "storiesTodo": len(todo),
+        "storiesCarriedOver": len(carried_over),
+        "pointsCommitted": committed_points,
+        "pointsDelivered": done_points,
+        "deliveryRate": delivery_rate,
+        "velocity": velocity,
+    }
+
+
 def get_sprint_rollup(session: Session, sprint_id: str) -> Dict[str, Any]:
     sprint = session.get(SprintDefinition, sprint_id)
     if not sprint:
@@ -334,6 +372,7 @@ def get_sprint_rollup(session: Session, sprint_id: str) -> Dict[str, Any]:
     start_dt = datetime.combine(sprint.start_date, datetime.min.time())
     end_dt = datetime.combine(sprint.end_date + timedelta(days=1), datetime.min.time())
     metrics = _compute_period_metrics(session, start_dt, end_dt)
+    story_metrics = get_sprint_story_metrics(session, sprint_id)
 
     reflection = {
         "topFragmenters": [],
@@ -355,6 +394,7 @@ def get_sprint_rollup(session: Session, sprint_id: str) -> Dict[str, Any]:
         "endDate": sprint.end_date.isoformat(),
         "durationDays": sprint.duration_days,
         "metrics": metrics,
+        "stories": story_metrics,
         "reflection": reflection,
     }
 

@@ -74,9 +74,10 @@ class EventLog(SQLModel, table=True):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     project_id: Optional[str] = Field(default=None, foreign_key="projects.id", index=True)
     ts: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    occurred_at: Optional[datetime] = Field(default=None, index=True)
     type: str = Field(index=True)
     payload: str  # JSON stored as string
-    
+
     class Config:
         arbitrary_types_allowed = True
 
@@ -91,5 +92,28 @@ class SprintDefinition(SQLModel, table=True):
     end_date: date = Field(index=True)
     duration_days: int
     is_archived: bool = Field(default=False, index=True)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+# Valid story statuses
+STORY_STATUSES = {"TODO", "IN_PROGRESS", "DONE", "CARRIED_OVER"}
+
+# Valid Fibonacci story point values
+STORY_POINTS_VALUES = {1, 2, 3, 5, 8, 13}
+
+
+class UserStory(SQLModel, table=True):
+    __tablename__ = "user_stories"
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    sprint_id: str = Field(foreign_key="sprint_definitions.id", index=True)
+    project_id: Optional[str] = Field(default=None, foreign_key="projects.id", index=True)
+    title: str = Field(index=True)
+    description: Optional[str] = None
+    acceptance_criteria: Optional[str] = None
+    story_points: Optional[int] = None  # Fibonacci: 1, 2, 3, 5, 8, 13
+    status: str = Field(default="TODO", index=True)  # TODO | IN_PROGRESS | DONE | CARRIED_OVER
+    is_deleted: bool = Field(default=False, index=True)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

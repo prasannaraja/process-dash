@@ -128,6 +128,22 @@ def get_sprint_summaries(projectId: Optional[str] = None, session: Session = Dep
     return {"items": list_sprint_summaries(session, project_id=projectId)}
 
 
+@router.get("/{sprint_id}")
+def get_sprint(sprint_id: str, session: Session = Depends(get_session)):
+    sprint = session.get(SprintDefinition, sprint_id)
+    if not sprint:
+        raise HTTPException(status_code=404, detail="Sprint not found")
+    return {
+        "id": sprint.id,
+        "projectId": sprint.project_id,
+        "name": sprint.name,
+        "startDate": sprint.start_date.isoformat(),
+        "endDate": sprint.end_date.isoformat(),
+        "durationDays": sprint.duration_days,
+        "isArchived": sprint.is_archived,
+    }
+
+
 @router.get("/{sprint_id}/rollup")
 def get_sprint_rollup_view(sprint_id: str, session: Session = Depends(get_session)):
     return get_sprint_rollup(session, sprint_id)

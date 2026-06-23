@@ -13,6 +13,7 @@ class StartBlockRequest(BaseModel):
     intent: str
     notes: Optional[str] = None
     projectId: Optional[str] = None
+    storyId: Optional[str] = None  # link this block to a user story
 
 class InterruptBlockRequest(BaseModel):
     blockId: str
