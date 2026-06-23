@@ -9,7 +9,7 @@ Write-Host "Starting Backend and Frontend..." -ForegroundColor Green
 
 # ===== Start Backend =====
 Write-Host "`nStarting Backend (FastAPI)..." -ForegroundColor Cyan
-$apiPath = Join-Path $PROJECT_ROOT "process-dash-api"
+$apiPath = Join-Path $PROJECT_ROOT "process-dash-core-api"
 $frontendPath = Join-Path (Join-Path $PROJECT_ROOT "process-dash-frontend") "beta"
 
 # Check if venv exists, if not show warning

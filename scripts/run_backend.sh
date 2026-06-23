@@ -6,7 +6,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
 echo "🚀 Starting Backend (FastAPI)..."
-cd "$PROJECT_ROOT/process-dash-api"
+cd "$PROJECT_ROOT/process-dash-core-api"
 
 # Check if venv exists
 if [ -d "venv" ]; then

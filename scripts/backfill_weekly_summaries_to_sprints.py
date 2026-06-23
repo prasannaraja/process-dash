@@ -4,7 +4,7 @@ from pathlib import Path
 import sys
 
 # Ensure `app` package is importable when script is run from repository root.
-API_ROOT = Path(__file__).resolve().parents[1] / "process-dash-api"
+API_ROOT = Path(__file__).resolve().parents[1] / "process-dash-core-api"
 if str(API_ROOT) not in sys.path:
     sys.path.insert(0, str(API_ROOT))
 
