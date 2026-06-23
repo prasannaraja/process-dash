@@ -1,4 +1,6 @@
 services:
+
+  # ── Core API ────────────────────────────────────────────────────────────────
   backend:
     build:
       context: ./process-dash-core-api
@@ -17,6 +19,7 @@ services:
     networks:
       - process-dash-net
 
+  # ── Frontend ────────────────────────────────────────────────────────────────
   frontend:
     build:
       context: ./process-dash-frontend/beta
@@ -35,6 +38,65 @@ services:
     networks:
       - process-dash-net
 
+  # ── MCP Server ──────────────────────────────────────────────────────────────
+  # Wraps the core API as MCP tools over SSE.
+  # Claude Desktop users: run `python server.py` (stdio) instead.
+  mcp:
+    build:
+      context: ./process-dash-core-mcp
+      dockerfile: Dockerfile
+    ports:
+      - "3100:3100"
+    environment:
+      - CORE_API_BASE_URL=http://backend:8000/api
+      - PORT=3100
+    depends_on:
+      - backend
+    networks:
+      - process-dash-net
+
+  # ── Copilot ─────────────────────────────────────────────────────────────────
+  # FastAPI chat service — POST /chat with {message, sessionId}.
+  # Requires an OpenAI-compatible LLM at LLM_BASE_URL.
+  # Option A: Ollama (add the ollama service below and uncomment depends_on).
+  # Option B: Set LLM_BASE_URL + LLM_API_KEY to any cloud endpoint.
+  copilot:
+    build:
+      context: ./process-dash-copilot
+      dockerfile: Dockerfile
+    ports:
+      - "3200:3200"
+    environment:
+      - CORE_API_BASE_URL=http://backend:8000/api
+      - MCP_SERVER_URL=http://mcp:3100
+      - LLM_BASE_URL=${LLM_BASE_URL:-http://ollama:11434/v1}
+      - LLM_MODEL=${LLM_MODEL:-llama3}
+      - LLM_API_KEY=${LLM_API_KEY:-ollama}
+      - PORT=3200
+    depends_on:
+      - backend
+      - mcp
+    networks:
+      - process-dash-net
+
+  # ── Ollama (optional local LLM) ─────────────────────────────────────────────
+  # Uncomment to run a local model. Pull a model with:
+  #   docker exec process-dash-ollama ollama pull llama3
+  # or set LLM_BASE_URL to an external OpenAI-compatible endpoint instead.
+  #
+  # ollama:
+  #   image: ollama/ollama:latest
+  #   container_name: process-dash-ollama
+  #   ports:
+  #     - "11434:11434"
+  #   volumes:
+  #     - ollama_data:/root/.ollama
+  #   networks:
+  #     - process-dash-net
+
 networks:
   process-dash-net:
     driver: bridge
+
+# volumes:
+#   ollama_data:
