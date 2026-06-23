@@ -1,0 +1,18 @@
+# Root-level .dockerignore — used by the copilot build (context: .)
+process-dash-core-api/venv/
+process-dash-core-api/__pycache__/
+process-dash-core-api/.pytest_cache/
+process-dash-core-api/*.sqlite
+process-dash-core-api/*.db
+process-dash-core-mcp/venv/
+process-dash-core-mcp/__pycache__/
+process-dash-copilot/venv/
+process-dash-copilot/__pycache__/
+process-dash-frontend/beta/node_modules/
+process-dash-frontend/beta/dist/
+process-dash-data/
+process-dash-backups/
+.git/
+**/*.pyc
+**/*.pyo
+.env

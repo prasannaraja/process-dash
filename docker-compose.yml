@@ -8,14 +8,18 @@ services:
     ports:
       - "8001:8000"
     volumes:
-      - ./process-dash-core-api:/code
       - ./process-dash-data:/data
       - ./process-dash-backups:/backups
     environment:
       - WORKOBS_DB_PATH=/data/workobs.sqlite
       - WORKOBS_BACKUP_DIR=/backups
       - WORKOBS_DB_STRICT_PATH=false
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     networks:
       - process-dash-net
 
@@ -26,15 +30,11 @@ services:
       dockerfile: Dockerfile
     ports:
       - "5051:5173"
-    volumes:
-      - ./process-dash-frontend/beta:/app
-      - /app/node_modules
     environment:
-      - VITE_API_BASE=/api
-      - BACKEND_URL=http://backend:8000
-    command: npm run dev -- --host
+      - VITE_API_BASE=http://localhost:8001/api
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     networks:
       - process-dash-net
 
@@ -50,20 +50,28 @@ services:
     environment:
       - CORE_API_BASE_URL=http://backend:8000/api
       - PORT=3100
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:3100/sse')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     networks:
       - process-dash-net
 
   # ── Copilot ─────────────────────────────────────────────────────────────────
   # FastAPI chat service — POST /chat with {message, sessionId}.
-  # Requires an OpenAI-compatible LLM at LLM_BASE_URL.
-  # Option A: Ollama (add the ollama service below and uncomment depends_on).
-  # Option B: Set LLM_BASE_URL + LLM_API_KEY to any cloud endpoint.
+  # Set LLM_BASE_URL + LLM_MODEL + LLM_API_KEY via a .env file or environment.
+  # Option A: Ollama — uncomment the ollama service below, set LLM_BASE_URL=http://ollama:11434/v1
+  # Option B: Any OpenAI-compatible cloud endpoint — set LLM_BASE_URL + LLM_API_KEY
   copilot:
     build:
-      context: ./process-dash-copilot
-      dockerfile: Dockerfile
+      # Context is repo root so Dockerfile can reach process-dash-core-mcp/api_client.py
+      context: .
+      dockerfile: process-dash-copilot/Dockerfile
     ports:
       - "3200:3200"
     environment:
@@ -73,16 +81,24 @@ services:
       - LLM_MODEL=${LLM_MODEL:-llama3}
       - LLM_API_KEY=${LLM_API_KEY:-ollama}
       - PORT=3200
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:3200/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     depends_on:
-      - backend
-      - mcp
+      backend:
+        condition: service_healthy
+      mcp:
+        condition: service_started
     networks:
       - process-dash-net
 
   # ── Ollama (optional local LLM) ─────────────────────────────────────────────
-  # Uncomment to run a local model. Pull a model with:
+  # Uncomment to run a local model. After first `docker compose up`, pull a model:
   #   docker exec process-dash-ollama ollama pull llama3
-  # or set LLM_BASE_URL to an external OpenAI-compatible endpoint instead.
+  # Then set LLM_BASE_URL=http://ollama:11434/v1 and LLM_MODEL=llama3 in .env
   #
   # ollama:
   #   image: ollama/ollama:latest
