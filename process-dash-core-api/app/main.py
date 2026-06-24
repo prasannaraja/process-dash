@@ -2,6 +2,7 @@ from fastapi import FastAPI, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from app.db import init_db
 from app.routers import health, intents, blocks, reports, export, recovery, sprints, projects, todos, stories
+from app.routers import financial_years, sprint_tasks
 
 app = FastAPI(title="Work Observability API", version="0.1.0")
 
@@ -35,6 +36,8 @@ api_router.include_router(export.router)
 api_router.include_router(recovery.router)
 api_router.include_router(todos.router)
 api_router.include_router(stories.router)
+api_router.include_router(financial_years.router)
+api_router.include_router(sprint_tasks.router)
 
 app.include_router(api_router)
 

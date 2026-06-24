@@ -13,6 +13,7 @@ class Project(SQLModel, table=True):
     allocation_start_date: Optional[date] = None
     allocation_end_date: Optional[date] = None
     is_active: bool = Field(default=True, index=True)
+    financial_year_id: Optional[str] = Field(default=None)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -101,6 +102,30 @@ STORY_STATUSES = {"TODO", "IN_PROGRESS", "DONE", "CARRIED_OVER"}
 
 # Valid Fibonacci story point values
 STORY_POINTS_VALUES = {1, 2, 3, 5, 8, 13}
+
+
+class FinancialYear(SQLModel, table=True):
+    __tablename__ = "financial_years"
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    label: str                                    # e.g. "FY 2025-26"
+    start_date: date
+    end_date: date
+    org_goal: Optional[str] = None
+    prev_year_feedback: Optional[str] = None
+    is_current: bool = Field(default=False)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class SprintTask(SQLModel, table=True):
+    __tablename__ = "sprint_tasks"
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    sprint_id: str = Field(foreign_key="sprint_definitions.id", index=True)
+    title: str
+    is_done: bool = Field(default=False)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class UserStory(SQLModel, table=True):

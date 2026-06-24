@@ -70,6 +70,53 @@ def _build_todos_for_date(session: Session, date_str: str) -> List[dict]:
     return [t for tid, t in todos.items() if tid not in deleted_ids]
 
 
+def _build_all_todos(session: Session) -> List[dict]:
+    """Replay all todo events and return every non-deleted todo across all dates."""
+    events = session.exec(
+        select(EventLog)
+        .where(EventLog.type.in_(["todo_added", "todo_completed", "todo_uncompleted", "todo_deleted"]))
+        .order_by(EventLog.ts)
+    ).all()
+
+    todos: dict[str, dict] = {}
+    deleted_ids: set[str] = set()
+
+    for evt in events:
+        p = _parse_payload(evt)
+        todo_id = p.get("todoId")
+        if not todo_id:
+            continue
+
+        if evt.type == "todo_added":
+            todos[todo_id] = {
+                "todoId": todo_id,
+                "text": p.get("text", ""),
+                "date": p.get("date"),
+                "completed": False,
+                "completionDate": None,
+            }
+        elif evt.type == "todo_completed":
+            if todo_id in todos:
+                todos[todo_id]["completed"] = True
+                todos[todo_id]["completionDate"] = p.get("completionDate")
+        elif evt.type == "todo_uncompleted":
+            if todo_id in todos:
+                todos[todo_id]["completed"] = False
+                todos[todo_id]["completionDate"] = None
+        elif evt.type == "todo_deleted":
+            deleted_ids.add(todo_id)
+
+    return [t for tid, t in todos.items() if tid not in deleted_ids]
+
+
+@router.get("")
+def list_all_todos(session: Session = Depends(get_session)):
+    """Return all todos across all dates, sorted by date desc."""
+    todos = _build_all_todos(session)
+    todos.sort(key=lambda t: t.get("date") or "", reverse=True)
+    return {"todos": todos}
+
+
 @router.post("")
 def add_todo(req: AddTodoRequest, session: Session = Depends(get_session)):
     todo_id = str(uuid.uuid4())
