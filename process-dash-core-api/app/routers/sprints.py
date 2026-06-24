@@ -84,6 +84,7 @@ def get_sprints(projectId: Optional[str] = None, session: Session = Depends(get_
                 "endDate": sprint.end_date.isoformat(),
                 "durationDays": sprint.duration_days,
                 "isArchived": sprint.is_archived,
+        "isClosed": sprint.is_closed,
             }
         )
     return {"items": items}
@@ -120,6 +121,7 @@ def create_sprint(req: SprintCreateRequest, session: Session = Depends(get_sessi
         "endDate": sprint.end_date.isoformat(),
         "durationDays": sprint.duration_days,
         "isArchived": sprint.is_archived,
+        "isClosed": sprint.is_closed,
     }
 
 
@@ -141,6 +143,7 @@ def get_sprint(sprint_id: str, session: Session = Depends(get_session)):
         "endDate": sprint.end_date.isoformat(),
         "durationDays": sprint.duration_days,
         "isArchived": sprint.is_archived,
+        "isClosed": sprint.is_closed,
     }
 
 
@@ -209,4 +212,115 @@ def update_sprint(
         "endDate": sprint.end_date.isoformat(),
         "durationDays": sprint.duration_days,
         "isArchived": sprint.is_archived,
+        "isClosed": sprint.is_closed,
     }
+
+
+# ── Sprint close + carry-forward ───────────────────────────────────────────────
+
+class CarryForwardRequest(BaseModel):
+    storyIds: List[str]          # stories to carry forward
+    targetSprintId: str          # destination sprint
+
+
+@router.post("/{sprint_id}/close")
+def close_sprint(sprint_id: str, session: Session = Depends(get_session)):
+    """Mark a sprint closed and return its unfinished stories."""
+    from app.models import UserStory
+    from sqlmodel import select as sql_select
+
+    sprint = session.get(SprintDefinition, sprint_id)
+    if not sprint:
+        raise HTTPException(status_code=404, detail="Sprint not found")
+
+    sprint.is_closed = True
+    sprint.updated_at = datetime.now(timezone.utc)
+    session.add(sprint)
+
+    log_event(
+        session,
+        "sprint_closed",
+        {"sprintId": sprint_id, "sprintName": sprint.name},
+        project_id=sprint.project_id,
+    )
+    session.commit()
+
+    # Return unfinished stories so the UI can offer carry-forward
+    from app.routers.stories import _story_to_dict, _parse_tags  # local import to avoid circular
+    unfinished = session.exec(
+        sql_select(UserStory).where(
+            UserStory.sprint_id == sprint_id,
+            UserStory.is_deleted == False,  # noqa: E712
+            UserStory.status != "DONE",
+        )
+    ).all()
+
+    return {
+        "ok": True,
+        "sprintId": sprint_id,
+        "unfinishedStories": [_story_to_dict(s) for s in unfinished],
+    }
+
+
+@router.post("/{sprint_id}/carry-forward")
+def carry_forward_stories(
+    sprint_id: str,
+    req: CarryForwardRequest,
+    session: Session = Depends(get_session),
+):
+    """Copy selected stories to a target sprint and mark originals as CARRIED_OVER."""
+    import uuid as _uuid
+    from app.models import UserStory
+    from app.routers.stories import _story_to_dict, _parse_tags  # local import
+
+    source_sprint = session.get(SprintDefinition, sprint_id)
+    if not source_sprint:
+        raise HTTPException(status_code=404, detail="Source sprint not found")
+
+    target_sprint = session.get(SprintDefinition, req.targetSprintId)
+    if not target_sprint:
+        raise HTTPException(status_code=404, detail="Target sprint not found")
+
+    moved = []
+    for story_id in req.storyIds:
+        story = session.get(UserStory, story_id)
+        if not story or story.is_deleted or story.sprint_id != sprint_id:
+            continue
+
+        # Mark original as CARRIED_OVER
+        story.status = "CARRIED_OVER"
+        story.updated_at = datetime.now(timezone.utc)
+        session.add(story)
+
+        # Create a fresh copy in the target sprint
+        new_story = UserStory(
+            id=str(_uuid.uuid4()),
+            sprint_id=req.targetSprintId,
+            project_id=story.project_id,
+            title=story.title,
+            description=story.description,
+            acceptance_criteria=story.acceptance_criteria,
+            story_points=story.story_points,
+            tags=story.tags,
+            status="TODO",
+        )
+        session.add(new_story)
+        session.flush()
+
+        log_event(
+            session,
+            "user_story_carried_forward",
+            {
+                "originalStoryId": story.id,
+                "newStoryId": new_story.id,
+                "fromSprintId": sprint_id,
+                "toSprintId": req.targetSprintId,
+                "title": story.title,
+                "tags": _parse_tags(story.tags),
+            },
+            project_id=story.project_id,
+        )
+        moved.append(_story_to_dict(new_story))
+
+    session.commit()
+    return {"ok": True, "movedStories": moved, "count": len(moved)}

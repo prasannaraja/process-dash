@@ -93,6 +93,7 @@ class SprintDefinition(SQLModel, table=True):
     end_date: date = Field(index=True)
     duration_days: int
     is_archived: bool = Field(default=False, index=True)
+    is_closed: bool = Field(default=False, index=True)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -139,6 +140,7 @@ class UserStory(SQLModel, table=True):
     acceptance_criteria: Optional[str] = None
     story_points: Optional[int] = None  # Fibonacci: 1, 2, 3, 5, 8, 13
     status: str = Field(default="TODO", index=True)  # TODO | IN_PROGRESS | DONE | CARRIED_OVER
+    tags: Optional[str] = Field(default=None)  # JSON array stored as string, e.g. '["PSP","TSP"]'
     is_deleted: bool = Field(default=False, index=True)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

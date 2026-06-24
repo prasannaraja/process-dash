@@ -1,6 +1,6 @@
-import uuid
+import json
 from datetime import datetime, timezone
-from typing import Optional
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, field_validator
@@ -13,6 +13,25 @@ from app.services.events import log_event
 router = APIRouter(prefix="/stories", tags=["stories"])
 
 
+# ── Tag helpers ────────────────────────────────────────────────────────────────
+
+def _parse_tags(raw: Optional[str]) -> List[str]:
+    if not raw:
+        return []
+    try:
+        result = json.loads(raw)
+        return [str(t).strip() for t in result if str(t).strip()] if isinstance(result, list) else []
+    except (json.JSONDecodeError, TypeError):
+        return []
+
+
+def _serialise_tags(tags: Optional[List[str]]) -> Optional[str]:
+    if not tags:
+        return None
+    cleaned = [t.strip() for t in tags if t.strip()]
+    return json.dumps(cleaned) if cleaned else None
+
+
 # ── Request / response models ──────────────────────────────────────────────────
 
 class StoryCreateRequest(BaseModel):
@@ -22,6 +41,7 @@ class StoryCreateRequest(BaseModel):
     description: Optional[str] = None
     acceptanceCriteria: Optional[str] = None
     storyPoints: Optional[int] = None
+    tags: Optional[List[str]] = None
 
     @field_validator("storyPoints")
     @classmethod
@@ -37,6 +57,7 @@ class StoryUpdateRequest(BaseModel):
     acceptanceCriteria: Optional[str] = None
     storyPoints: Optional[int] = None
     status: Optional[str] = None
+    tags: Optional[List[str]] = None
 
     @field_validator("storyPoints")
     @classmethod
@@ -76,6 +97,7 @@ def _story_to_dict(story: UserStory) -> dict:
         "acceptanceCriteria": story.acceptance_criteria,
         "storyPoints": story.story_points,
         "status": story.status,
+        "tags": _parse_tags(story.tags),
         "createdAt": story.created_at.isoformat(),
         "updatedAt": story.updated_at.isoformat(),
     }
@@ -88,6 +110,7 @@ def list_stories(
     sprintId: Optional[str] = None,
     projectId: Optional[str] = None,
     status: Optional[str] = None,
+    tag: Optional[str] = None,
     session: Session = Depends(get_session),
 ):
     query = select(UserStory).where(UserStory.is_deleted == False)  # noqa: E712
@@ -100,17 +123,21 @@ def list_stories(
             raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of {STORY_STATUSES}")
         query = query.where(UserStory.status == status)
     stories = session.exec(query.order_by(UserStory.created_at)).all()
+
+    # Client-side tag filter (SQLite JSON support is limited)
+    if tag:
+        tag_lower = tag.lower()
+        stories = [s for s in stories if tag_lower in [t.lower() for t in _parse_tags(s.tags)]]
+
     return {"items": [_story_to_dict(s) for s in stories]}
 
 
 @router.post("")
 def create_story(req: StoryCreateRequest, session: Session = Depends(get_session)):
-    # Validate sprint exists
     sprint = session.get(SprintDefinition, req.sprintId)
     if not sprint:
         raise HTTPException(status_code=404, detail="Sprint not found")
 
-    # Inherit projectId from sprint if not explicitly provided
     project_id = req.projectId or sprint.project_id
 
     story = UserStory(
@@ -120,9 +147,10 @@ def create_story(req: StoryCreateRequest, session: Session = Depends(get_session
         description=req.description,
         acceptance_criteria=req.acceptanceCriteria,
         story_points=req.storyPoints,
+        tags=_serialise_tags(req.tags),
     )
     session.add(story)
-    session.flush()  # get story.id without final commit
+    session.flush()
 
     log_event(
         session,
@@ -133,6 +161,7 @@ def create_story(req: StoryCreateRequest, session: Session = Depends(get_session
             "projectId": story.project_id,
             "title": story.title,
             "storyPoints": story.story_points,
+            "tags": _parse_tags(story.tags),
         },
         project_id=project_id,
     )
@@ -177,6 +206,9 @@ def update_story(
     if req.status is not None and req.status != old_status:
         story.status = req.status
         changed = True
+    if req.tags is not None:
+        story.tags = _serialise_tags(req.tags)
+        changed = True
 
     if changed:
         story.updated_at = datetime.now(timezone.utc)
@@ -194,9 +226,6 @@ def update_story(
                 },
                 project_id=story.project_id,
             )
-        else:
-            session.commit()
-            session.refresh(story)
 
     session.commit()
     session.refresh(story)
