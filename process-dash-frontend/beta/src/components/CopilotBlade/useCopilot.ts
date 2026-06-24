@@ -1,5 +1,20 @@
 import { useState, useCallback } from "react";
 import { sendMessage, ChatMessage, ToolCall } from "./api";
+import { dispatchDataChanged } from "../../hooks/useDataRefresh";
+
+// Tools that mutate data — trigger a page refresh after these complete
+const WRITE_TOOLS = new Set([
+  "start_block", "interrupt_block", "end_block",
+  "start_recovery", "end_recovery",
+  "add_todo", "complete_todo", "uncomplete_todo", "delete_todo",
+  "create_sprint", "update_sprint", "save_sprint_summary",
+  "create_story", "update_story", "update_story_status", "delete_story",
+  "create_project", "update_project", "delete_project",
+  "add_project_member", "update_project_member",
+  "add_project_contact", "add_project_allocation", "update_project_config",
+  "create_financial_year", "update_financial_year",
+  "create_sprint_task", "toggle_sprint_task", "delete_sprint_task",
+]);
 
 const SESSION_KEY   = "copilot_session_id";
 const MESSAGES_KEY  = "copilot_messages";
@@ -82,6 +97,14 @@ export function useCopilot() {
           saveMessages(next);
           return next;
         });
+
+        // Notify pages to re-fetch if any write tools ran
+        const writeToolNames = toolCalls
+          .map((tc) => tc.name)
+          .filter((name) => WRITE_TOOLS.has(name));
+        if (writeToolNames.length > 0) {
+          dispatchDataChanged(writeToolNames);
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unknown error");
       } finally {

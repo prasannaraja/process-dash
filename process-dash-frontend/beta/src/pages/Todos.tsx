@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { api, type Todo } from "../api/client";
+import { useDataRefresh } from "../hooks/useDataRefresh";
 import { Button, EmptyState, Loading, PageHeader } from "../components/ui";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -147,7 +148,7 @@ export default function Todos() {
     const [loading, setLoading] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
 
-    const load = async () => {
+    const load = useCallback(async () => {
         setLoading(true);
         try {
             const res = await api.todos.listAll();
@@ -157,9 +158,10 @@ export default function Todos() {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
-    useEffect(() => { load(); }, []);
+    useDataRefresh(load);
+    useEffect(() => { load(); }, [load]);
 
     const handleAdd = async () => {
         const text = inputText.trim();

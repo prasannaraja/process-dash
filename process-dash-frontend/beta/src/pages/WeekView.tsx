@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { api, type SprintDefinition, type SprintRollup, type WeeklySummaryRequest, type ProjectDefinition, type SprintTask } from "../api/client";
+import { useDataRefresh } from "../hooks/useDataRefresh";
 import {
     Badge,
     Button,
@@ -50,7 +51,7 @@ export default function WeekView() {
     const [creating, setCreating] = useState(false);
     const [createError, setCreateError] = useState("");
 
-    const fetchSprint = async (sprintId: string) => {
+    const fetchSprint = useCallback(async (sprintId: string) => {
         if (!sprintId) return;
         setLoading(true);
         setError("");
@@ -70,7 +71,13 @@ export default function WeekView() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [selectedSprintId]);
+
+    // Re-fetch current sprint when copilot makes changes
+    const refreshCurrentSprint = useCallback(() => {
+        if (selectedSprintId) fetchSprint(selectedSprintId);
+    }, [selectedSprintId, fetchSprint]);
+    useDataRefresh(refreshCurrentSprint);
 
     useEffect(() => {
         const loadSprints = async () => {

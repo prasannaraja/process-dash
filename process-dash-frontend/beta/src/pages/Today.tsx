@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { api, type DayRollup, type ProjectDefinition } from "../api/client";
+import { useDataRefresh } from "../hooks/useDataRefresh";
 import {
     Badge,
     Button,
@@ -65,9 +66,12 @@ export default function Today() {
     const [useExact, setUseExact] = useState(false);
     const [exactDuration, setExactDuration] = useState<string>("");
 
-    const refresh = () => {
+    const refresh = useCallback(() => {
         api.reports.getDay(date).then(setData).catch(console.error);
-    };
+    }, [date]);
+
+    // Re-fetch when copilot makes changes
+    useDataRefresh(refresh);
 
     useEffect(() => {
         refresh();

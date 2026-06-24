@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { api, type DayRollup } from "../api/client";
+import { useDataRefresh } from "../hooks/useDataRefresh";
 import {
     Badge,
     EmptyState,
@@ -13,9 +14,15 @@ export default function DayView() {
     const [date, setDate] = useState(() => new Date().toISOString().split("T")[0]);
     const [data, setData] = useState<DayRollup | null>(null);
 
-    useEffect(() => {
+    const refresh = useCallback(() => {
         api.reports.getDay(date).then(setData).catch(console.error);
     }, [date]);
+
+    useDataRefresh(refresh);
+
+    useEffect(() => {
+        refresh();
+    }, [refresh]);
 
     if (!data) return <Loading text="Loading daily report…" />;
 
