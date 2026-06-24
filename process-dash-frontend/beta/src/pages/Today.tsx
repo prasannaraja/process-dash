@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
-import { api, type DayRollup, type ProjectDefinition } from "../api/client";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { api, type DayRollup, type ProjectDefinition, type Todo } from "../api/client";
 import { useDataRefresh } from "../hooks/useDataRefresh";
 import {
     Badge,
@@ -66,6 +66,30 @@ export default function Today() {
     const [useExact, setUseExact] = useState(false);
     const [exactDuration, setExactDuration] = useState<string>("");
 
+    // ── Todo state ────────────────────────────────────────────────────────────
+    const [allTodos, setAllTodos] = useState<Todo[]>([]);
+
+    const loadTodos = useCallback(async () => {
+        try { const res = await api.todos.listAll(); setAllTodos(res.todos); } catch {}
+    }, []);
+
+    const { todayTodos, overdueTodos } = useMemo(() => {
+        const pending = allTodos.filter(t => !t.completed);
+        return {
+            todayTodos:   pending.filter(t => t.date === date),
+            overdueTodos: pending.filter(t => t.date < date),
+        };
+    }, [allTodos, date]);
+
+    const handleTodoToggle = async (todo: Todo) => {
+        if (todo.completed) {
+            await api.todos.uncomplete(todo.todoId, date);
+        } else {
+            await api.todos.complete(todo.todoId, date);
+        }
+        loadTodos();
+    };
+
     const refresh = useCallback(() => {
         api.reports.getDay(date).then(setData).catch(console.error);
     }, [date]);
@@ -75,6 +99,7 @@ export default function Today() {
 
     useEffect(() => {
         refresh();
+        loadTodos();
         api.projects.list().then(res => {
             const activeProjects = res.items.filter(p => p.isActive);
             setProjects(activeProjects);
@@ -215,35 +240,101 @@ export default function Today() {
                 }
             />
 
-            {/* Intents Section */}
-            <Section title="Daily Intents">
-                <Card style={{ padding: 16 }}>
-                    {data.intents.length === 0 ? (
-                        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                            <textarea
-                                rows={5}
-                                placeholder="List up to 5 intents (one per line)..."
-                                value={intentsInput}
-                                onChange={(e) => setIntentsInput(e.target.value)}
-                                style={{
-                                    ...inputStyle,
-                                    resize: "vertical",
-                                }}
-                            />
-                            <Button variant="primary" onClick={handleSetIntents} style={{ alignSelf: "flex-start" }}>
-                                Set Intents
-                            </Button>
+            {/* Intents + Todos side by side */}
+            <Section title="Daily Intents &amp; Todos">
+                <div style={{ display: "grid", gridTemplateColumns: "3fr 2fr", gap: 16, alignItems: "stretch" }}>
+
+                    {/* ── Intents ── */}
+                    <Card style={{ padding: 16, minHeight: 140 }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 10 }}>Intents</div>
+                        {data.intents.length === 0 ? (
+                            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                                <textarea
+                                    rows={4}
+                                    placeholder="List up to 5 intents (one per line)..."
+                                    value={intentsInput}
+                                    onChange={(e) => setIntentsInput(e.target.value)}
+                                    style={{ ...inputStyle, resize: "vertical" }}
+                                />
+                                <Button variant="primary" onClick={handleSetIntents} style={{ alignSelf: "flex-start" }}>
+                                    Set Intents
+                                </Button>
+                            </div>
+                        ) : (
+                            <ul style={{ margin: 0, paddingLeft: 18, lineHeight: 1.9 }}>
+                                {data.intents.map((i, idx) => (
+                                    <li key={idx} style={{ fontSize: 13, color: "var(--text-2)" }}>{i}</li>
+                                ))}
+                            </ul>
+                        )}
+                    </Card>
+
+                    {/* ── Todos ── */}
+                    <Card style={{ padding: 16, minHeight: 140 }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.07em" }}>Todos</div>
+                            {overdueTodos.length > 0 && (
+                                <span style={{ fontSize: 10, fontWeight: 700, color: "var(--red)", background: "var(--red-bg)", borderRadius: 8, padding: "2px 7px" }}>
+                                    {overdueTodos.length} overdue
+                                </span>
+                            )}
                         </div>
-                    ) : (
-                        <ul style={{ margin: 0, paddingLeft: 18, lineHeight: 1.9 }}>
-                            {data.intents.map((i, idx) => (
-                                <li key={idx} style={{ fontSize: 13, color: "var(--text-2)" }}>
-                                    {i}
-                                </li>
-                            ))}
-                        </ul>
-                    )}
-                </Card>
+
+                        {/* Today's todos */}
+                        {todayTodos.length > 0 && (
+                            <div style={{ display: "flex", flexDirection: "column", gap: 1, marginBottom: overdueTodos.length > 0 ? 12 : 0 }}>
+                                {todayTodos.map(t => (
+                                    <div
+                                        key={t.todoId}
+                                        onClick={() => handleTodoToggle(t)}
+                                        style={{ display: "flex", alignItems: "center", gap: 10, padding: "5px 6px", borderRadius: 5, cursor: "pointer", transition: "background 0.1s" }}
+                                        onMouseEnter={e => (e.currentTarget.style.background = "var(--surface-2)")}
+                                        onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                                    >
+                                        {/* Custom circle checkbox */}
+                                        <div style={{
+                                            width: 14, height: 14, flexShrink: 0, borderRadius: "50%",
+                                            border: "1.5px solid var(--border-2)",
+                                            background: "transparent",
+                                            display: "flex", alignItems: "center", justifyContent: "center",
+                                        }} />
+                                        <span style={{ fontSize: 13, color: "var(--text-2)", lineHeight: 1.4 }}>{t.text}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Overdue todos */}
+                        {overdueTodos.length > 0 && (
+                            <>
+                                <div style={{ fontSize: 10, fontWeight: 700, color: "var(--red)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 5 }}>Overdue</div>
+                                <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                                    {overdueTodos.map(t => (
+                                        <div
+                                            key={t.todoId}
+                                            onClick={() => handleTodoToggle(t)}
+                                            style={{ display: "flex", alignItems: "center", gap: 10, padding: "5px 6px", borderRadius: 5, cursor: "pointer", transition: "background 0.1s" }}
+                                            onMouseEnter={e => (e.currentTarget.style.background = "var(--red-bg)")}
+                                            onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                                        >
+                                            <div style={{
+                                                width: 14, height: 14, flexShrink: 0, borderRadius: "50%",
+                                                border: "1.5px solid rgba(248,113,113,0.5)",
+                                                background: "transparent",
+                                            }} />
+                                            <span style={{ fontSize: 13, color: "var(--red)", lineHeight: 1.4, opacity: 0.85 }}>{t.text}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </>
+                        )}
+
+                        {todayTodos.length === 0 && overdueTodos.length === 0 && (
+                            <div style={{ fontSize: 12, color: "var(--text-3)", paddingTop: 4 }}>No pending todos — you're clear</div>
+                        )}
+                    </Card>
+
+                </div>
             </Section>
 
             {/* Active Work / Recovery Section */}
