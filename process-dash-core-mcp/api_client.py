@@ -395,3 +395,23 @@ def toggle_sprint_task(sprint_id: str, task_id: str, is_done: bool) -> dict:
 def delete_sprint_task(sprint_id: str, task_id: str) -> dict:
     _delete(f"/sprints/{sprint_id}/tasks/{task_id}")
     return {"deleted": True, "task_id": task_id}
+
+
+# ── Tags + Sprint close/carry-forward ─────────────────────────────────────────
+
+def tag_story(story_id: str, tags: list) -> dict:
+    """Set (replace) the tags on a story."""
+    return _patch(f"/stories/{story_id}", {"tags": tags})
+
+
+def close_sprint(sprint_id: str) -> dict:
+    """Mark a sprint as closed. Returns unfinished stories."""
+    return _post(f"/sprints/{sprint_id}/close", {})
+
+
+def carry_forward_stories(sprint_id: str, story_ids: list, target_sprint_id: str) -> dict:
+    """Copy selected stories to a target sprint and mark originals CARRIED_OVER."""
+    return _post(f"/sprints/{sprint_id}/carry-forward", {
+        "storyIds": story_ids,
+        "targetSprintId": target_sprint_id,
+    })

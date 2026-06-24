@@ -317,6 +317,57 @@ TOOLS = [
         },
     ),
     types.Tool(
+        name="tag_story",
+        description=(
+            "Set (replace) the tags on a user story. "
+            "Use to add PSP, TSP, or any custom label for filtering. "
+            "Pass an empty list to remove all tags."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "storyId": {"type": "string", "description": "UUID of the story"},
+                "tags": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "New tag list, e.g. [\"PSP\", \"TSP\"]. Replaces existing tags.",
+                },
+            },
+            "required": ["storyId", "tags"],
+        },
+    ),
+    types.Tool(
+        name="close_sprint",
+        description=(
+            "Mark a sprint as closed. Returns the list of unfinished stories "
+            "so you can offer to carry them forward with carry_forward_stories."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "sprintId": {"type": "string", "description": "UUID of the sprint to close"},
+            },
+            "required": ["sprintId"],
+        },
+    ),
+    types.Tool(
+        name="carry_forward_stories",
+        description=(
+            "Move a list of stories from a closed sprint to a target sprint. "
+            "Originals are marked CARRIED_OVER; fresh TODO copies appear in the target sprint. "
+            "Always call close_sprint first, then offer this to the user."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "sprintId":       {"type": "string", "description": "Source sprint UUID"},
+                "storyIds":       {"type": "array", "items": {"type": "string"}, "description": "Story UUIDs to carry forward"},
+                "targetSprintId": {"type": "string", "description": "Destination sprint UUID"},
+            },
+            "required": ["sprintId", "storyIds", "targetSprintId"],
+        },
+    ),
+    types.Tool(
         name="get_todos",
         description="Fetch the todo list for a given date.",
         inputSchema={
@@ -778,6 +829,22 @@ async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
 
             case "delete_story":
                 return _ok(api.delete_story(story_id=arguments["storyId"]))
+
+            case "tag_story":
+                return _ok(api.tag_story(
+                    story_id=arguments["storyId"],
+                    tags=arguments["tags"],
+                ))
+
+            case "close_sprint":
+                return _ok(api.close_sprint(sprint_id=arguments["sprintId"]))
+
+            case "carry_forward_stories":
+                return _ok(api.carry_forward_stories(
+                    sprint_id=arguments["sprintId"],
+                    story_ids=arguments["storyIds"],
+                    target_sprint_id=arguments["targetSprintId"],
+                ))
 
             case "complete_todo":
                 return _ok(api.complete_todo(arguments["todoId"], arguments["completionDate"]))
