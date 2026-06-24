@@ -277,6 +277,7 @@ export default function WeekView() {
     if (loading && !data) return <Loading text="Loading sprint report…" />;
 
     return (
+        <>
         <div style={{ padding: "28px 32px", maxWidth: 960, margin: "0 auto", paddingBottom: 80 }}>
             <PageHeader
                 title="Sprint Report"
@@ -852,5 +853,6 @@ export default function WeekView() {
                 </div>
             </div>
         )}
+        </>
     );
 }
