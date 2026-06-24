@@ -196,6 +196,40 @@ TOOLS = [
         },
     ),
     types.Tool(
+        name="update_sprint",
+        description="Rename a sprint or change its start date / duration. If the sprint already has summaries, set forceRecalculate=true to confirm the change.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "sprintId":         {"type": "string", "description": "UUID of the sprint"},
+                "name":             {"type": "string", "description": "New sprint name (optional)"},
+                "startDate":        {"type": "string", "description": "New start date YYYY-MM-DD (optional)"},
+                "durationDays":     {"type": "integer", "description": "New duration in days (optional)"},
+                "forceRecalculate": {"type": "boolean", "description": "Confirm date/duration change when summaries exist"},
+            },
+            "required": ["sprintId"],
+        },
+    ),
+    types.Tool(
+        name="list_sprint_summaries",
+        description="List saved sprint reflection summaries for all sprints.",
+        inputSchema={"type": "object", "properties": {}},
+    ),
+    types.Tool(
+        name="save_sprint_summary",
+        description="Save the weekly reflection summary for a sprint (top fragmenters, non-performance issues, one change for next week).",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "sprintId":               {"type": "string", "description": "UUID of the sprint"},
+                "topFragmenters":         {"type": "array", "items": {"type": "string"}, "description": "List of top interruption reasons"},
+                "notPerformanceIssues":   {"type": "array", "items": {"type": "string"}, "description": "Things that were not performance issues"},
+                "oneChangeNextWeek":      {"type": "string", "description": "One thing to change next sprint"},
+            },
+            "required": ["sprintId", "topFragmenters", "notPerformanceIssues", "oneChangeNextWeek"],
+        },
+    ),
+    types.Tool(
         name="list_stories",
         description=(
             "List user stories for a sprint. Optionally filter by status "
@@ -257,6 +291,32 @@ TOOLS = [
         },
     ),
     types.Tool(
+        name="update_story",
+        description="Edit a user story's title, description, story points, or status in one call.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "storyId":      {"type": "string", "description": "UUID of the story"},
+                "title":        {"type": "string", "description": "New title (optional)"},
+                "description":  {"type": "string", "description": "New description (optional)"},
+                "storyPoints":  {"type": "integer", "description": "New story point estimate (optional)"},
+                "status":       {"type": "string", "enum": ["TODO", "IN_PROGRESS", "DONE", "BLOCKED"], "description": "New status (optional)"},
+            },
+            "required": ["storyId"],
+        },
+    ),
+    types.Tool(
+        name="delete_story",
+        description="Soft-delete a user story. Confirm with the user before deleting.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "storyId": {"type": "string", "description": "UUID of the story to delete"},
+            },
+            "required": ["storyId"],
+        },
+    ),
+    types.Tool(
         name="get_todos",
         description="Fetch the todo list for a given date.",
         inputSchema={
@@ -292,6 +352,29 @@ TOOLS = [
         },
     ),
     types.Tool(
+        name="uncomplete_todo",
+        description="Mark a completed todo as not done.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "todoId":          {"type": "string", "description": "UUID of the todo"},
+                "completionDate":  {"type": "string", "description": "The date it was completed on, YYYY-MM-DD"},
+            },
+            "required": ["todoId", "completionDate"],
+        },
+    ),
+    types.Tool(
+        name="delete_todo",
+        description="Permanently delete a todo item.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "todoId": {"type": "string", "description": "UUID of the todo to delete"},
+            },
+            "required": ["todoId"],
+        },
+    ),
+    types.Tool(
         name="list_projects",
         description=(
             "List all active projects. Use this when the user mentions a project by name "
@@ -315,6 +398,158 @@ TOOLS = [
         },
     ),
     types.Tool(
+        name="get_projects_dashboard",
+        description="Get a summary dashboard of all projects — useful for understanding overall project health and activity.",
+        inputSchema={"type": "object", "properties": {}},
+    ),
+    types.Tool(
+        name="get_project_report",
+        description="Get detailed activity data for a specific project.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "projectId": {"type": "string", "description": "UUID of the project"},
+            },
+            "required": ["projectId"],
+        },
+    ),
+    types.Tool(
+        name="list_project_members",
+        description="List all team members on a project.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "projectId": {"type": "string", "description": "UUID of the project"},
+            },
+            "required": ["projectId"],
+        },
+    ),
+    types.Tool(
+        name="add_project_member",
+        description="Add a team member to a project.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "projectId": {"type": "string", "description": "UUID of the project"},
+                "name":      {"type": "string", "description": "Member's full name"},
+                "email":     {"type": "string", "description": "Member's email (optional)"},
+                "role":      {"type": "string", "enum": ["LEAD", "CONTRIBUTOR", "OBSERVER"], "description": "Member role (default: CONTRIBUTOR)"},
+            },
+            "required": ["projectId", "name"],
+        },
+    ),
+    types.Tool(
+        name="update_project_member",
+        description="Update a team member's name, email, role, or active status on a project.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "projectId":  {"type": "string", "description": "UUID of the project"},
+                "memberId":   {"type": "string", "description": "UUID of the team member"},
+                "name":       {"type": "string", "description": "New name (optional)"},
+                "email":      {"type": "string", "description": "New email (optional)"},
+                "role":       {"type": "string", "enum": ["LEAD", "CONTRIBUTOR", "OBSERVER"], "description": "New role (optional)"},
+                "isActive":   {"type": "boolean", "description": "Set false to deactivate (optional)"},
+            },
+            "required": ["projectId", "memberId"],
+        },
+    ),
+    types.Tool(
+        name="list_project_contacts",
+        description="List stakeholder contacts for a project (e.g. managers, tech leads, clients).",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "projectId": {"type": "string", "description": "UUID of the project"},
+            },
+            "required": ["projectId"],
+        },
+    ),
+    types.Tool(
+        name="add_project_contact",
+        description="Add a stakeholder contact to a project.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "projectId":   {"type": "string", "description": "UUID of the project"},
+                "name":        {"type": "string", "description": "Contact's full name"},
+                "email":       {"type": "string", "description": "Contact's email (optional)"},
+                "contactRole": {"type": "string", "enum": ["STAKEHOLDER", "MANAGER", "TECH_LEAD"], "description": "Contact role"},
+                "isPrimary":   {"type": "boolean", "description": "Whether this is the primary contact"},
+            },
+            "required": ["projectId", "name"],
+        },
+    ),
+    types.Tool(
+        name="list_project_allocations",
+        description="List time allocations for team members on a project.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "projectId": {"type": "string", "description": "UUID of the project"},
+            },
+            "required": ["projectId"],
+        },
+    ),
+    types.Tool(
+        name="add_project_allocation",
+        description="Record a team member's time allocation to a project (percentage + date range).",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "projectId":            {"type": "string", "description": "UUID of the project"},
+                "teamMemberId":         {"type": "string", "description": "UUID of the team member (call list_project_members first)"},
+                "startDate":            {"type": "string", "description": "Allocation start date YYYY-MM-DD"},
+                "endDate":              {"type": "string", "description": "Allocation end date YYYY-MM-DD (optional)"},
+                "allocationPercentage": {"type": "integer", "description": "Percentage of time (1-100, default 100)"},
+            },
+            "required": ["projectId", "teamMemberId", "startDate"],
+        },
+    ),
+    types.Tool(
+        name="get_project_config",
+        description="Get a project's configuration — default sprint duration and GitHub settings.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "projectId": {"type": "string", "description": "UUID of the project"},
+            },
+            "required": ["projectId"],
+        },
+    ),
+    types.Tool(
+        name="update_project_config",
+        description="Update a project's default sprint duration or GitHub repo/username.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "projectId":               {"type": "string", "description": "UUID of the project"},
+                "defaultSprintDurationDays": {"type": "integer", "description": "Default sprint length in days"},
+                "githubRepo":              {"type": "string", "description": "GitHub repo in owner/repo format"},
+                "githubUsername":          {"type": "string", "description": "GitHub username for activity tracking"},
+            },
+            "required": ["projectId"],
+        },
+    ),
+    types.Tool(
+        name="update_project",
+        description=(
+            "Update an existing project's name, description, allocation start date, or allocation end date. "
+            "Call list_projects first to resolve the project name to an ID."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "projectId":           {"type": "string", "description": "UUID of the project"},
+                "name":                {"type": "string", "description": "New project name (optional)"},
+                "description":         {"type": "string", "description": "New description (optional)"},
+                "allocationStartDate": {"type": "string", "description": "Start date YYYY-MM-DD (optional)"},
+                "allocationEndDate":   {"type": "string", "description": "End date YYYY-MM-DD (optional)"},
+            },
+            "required": ["projectId"],
+        },
+    ),
+    types.Tool(
         name="delete_project",
         description=(
             "Permanently delete a project by its ID. "
@@ -327,6 +562,98 @@ TOOLS = [
                 "projectId": {"type": "string", "description": "UUID of the project to delete"},
             },
             "required": ["projectId"],
+        },
+    ),
+
+    # ── Financial Years ────────────────────────────────────────────────────────
+    types.Tool(
+        name="list_financial_years",
+        description="List all financial years in the organisation, including their labels, dates, org goals, and which is current.",
+        inputSchema={"type": "object", "properties": {}},
+    ),
+    types.Tool(
+        name="get_current_financial_year",
+        description="Get the currently active financial year with its org goal and previous year feedback.",
+        inputSchema={"type": "object", "properties": {}},
+    ),
+    types.Tool(
+        name="create_financial_year",
+        description="Create a new financial year for the organisation. Optionally set an org goal and mark it as current.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "label":             {"type": "string", "description": "Human-readable label, e.g. 'FY 2025-26'"},
+                "startDate":         {"type": "string", "description": "Start date in YYYY-MM-DD format"},
+                "endDate":           {"type": "string", "description": "End date in YYYY-MM-DD format"},
+                "orgGoal":           {"type": "string", "description": "Organisation goal for this year (optional)"},
+                "prevYearFeedback":  {"type": "string", "description": "Lessons learned from previous year (optional)"},
+                "isCurrent":         {"type": "boolean", "description": "Whether to make this the active financial year"},
+            },
+            "required": ["label", "startDate", "endDate"],
+        },
+    ),
+    types.Tool(
+        name="update_financial_year",
+        description="Update an existing financial year — change the org goal, previous year feedback, or mark it as current.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "fyId":              {"type": "string", "description": "UUID of the financial year to update"},
+                "orgGoal":           {"type": "string", "description": "New org goal text (optional)"},
+                "prevYearFeedback":  {"type": "string", "description": "Updated previous year feedback (optional)"},
+                "isCurrent":         {"type": "boolean", "description": "Set to true to make this the active FY"},
+            },
+            "required": ["fyId"],
+        },
+    ),
+
+    # ── Sprint Tasks ───────────────────────────────────────────────────────────
+    types.Tool(
+        name="list_sprint_tasks",
+        description="List all checklist tasks for a sprint. Call list_sprints first if you need to resolve a sprint name to an ID.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "sprintId": {"type": "string", "description": "UUID of the sprint"},
+            },
+            "required": ["sprintId"],
+        },
+    ),
+    types.Tool(
+        name="create_sprint_task",
+        description="Add a new checklist task to a sprint (non-story work like admin, ops, or meetings).",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "sprintId": {"type": "string", "description": "UUID of the sprint"},
+                "title":    {"type": "string", "description": "Task title"},
+            },
+            "required": ["sprintId", "title"],
+        },
+    ),
+    types.Tool(
+        name="toggle_sprint_task",
+        description="Mark a sprint task as done or not done.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "sprintId": {"type": "string", "description": "UUID of the sprint"},
+                "taskId":   {"type": "string", "description": "UUID of the task"},
+                "isDone":   {"type": "boolean", "description": "True to mark done, false to reopen"},
+            },
+            "required": ["sprintId", "taskId", "isDone"],
+        },
+    ),
+    types.Tool(
+        name="delete_sprint_task",
+        description="Delete a sprint task permanently.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "sprintId": {"type": "string", "description": "UUID of the sprint"},
+                "taskId":   {"type": "string", "description": "UUID of the task to delete"},
+            },
+            "required": ["sprintId", "taskId"],
         },
     ),
 ]
@@ -396,6 +723,26 @@ async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
             case "get_sprint_rollup":
                 return _ok(api.get_sprint_rollup(arguments["sprintId"]))
 
+            case "update_sprint":
+                return _ok(api.update_sprint(
+                    sprint_id=arguments["sprintId"],
+                    name=arguments.get("name"),
+                    start_date=arguments.get("startDate"),
+                    duration_days=arguments.get("durationDays"),
+                    force_recalculate=arguments.get("forceRecalculate", False),
+                ))
+
+            case "list_sprint_summaries":
+                return _ok(api.list_sprint_summaries())
+
+            case "save_sprint_summary":
+                return _ok(api.save_sprint_summary(
+                    sprint_id=arguments["sprintId"],
+                    top_fragmenters=arguments["topFragmenters"],
+                    not_performance_issues=arguments["notPerformanceIssues"],
+                    one_change_next_week=arguments["oneChangeNextWeek"],
+                ))
+
             case "list_stories":
                 return _ok(api.list_stories(
                     sprint_id=arguments.get("sprintId"),
@@ -420,8 +767,29 @@ async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
             case "add_todo":
                 return _ok(api.add_todo(arguments["text"], arguments["date"]))
 
+            case "update_story":
+                return _ok(api.update_story(
+                    story_id=arguments["storyId"],
+                    title=arguments.get("title"),
+                    description=arguments.get("description"),
+                    story_points=arguments.get("storyPoints"),
+                    status=arguments.get("status"),
+                ))
+
+            case "delete_story":
+                return _ok(api.delete_story(story_id=arguments["storyId"]))
+
             case "complete_todo":
                 return _ok(api.complete_todo(arguments["todoId"], arguments["completionDate"]))
+
+            case "uncomplete_todo":
+                return _ok(api.uncomplete_todo(
+                    todo_id=arguments["todoId"],
+                    completion_date=arguments["completionDate"],
+                ))
+
+            case "delete_todo":
+                return _ok(api.delete_todo(todo_id=arguments["todoId"]))
 
             case "list_projects":
                 return _ok(api.list_projects())
@@ -432,9 +800,130 @@ async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
                     description=arguments.get("description"),
                 ))
 
+            case "get_projects_dashboard":
+                return _ok(api.get_projects_dashboard())
+
+            case "get_project_report":
+                return _ok(api.get_project_report(project_id=arguments["projectId"]))
+
+            case "list_project_members":
+                return _ok(api.list_project_members(project_id=arguments["projectId"]))
+
+            case "add_project_member":
+                return _ok(api.add_project_member(
+                    project_id=arguments["projectId"],
+                    name=arguments["name"],
+                    email=arguments.get("email"),
+                    role=arguments.get("role", "CONTRIBUTOR"),
+                ))
+
+            case "update_project_member":
+                return _ok(api.update_project_member(
+                    project_id=arguments["projectId"],
+                    member_id=arguments["memberId"],
+                    name=arguments.get("name"),
+                    email=arguments.get("email"),
+                    role=arguments.get("role"),
+                    is_active=arguments.get("isActive"),
+                ))
+
+            case "list_project_contacts":
+                return _ok(api.list_project_contacts(project_id=arguments["projectId"]))
+
+            case "add_project_contact":
+                return _ok(api.add_project_contact(
+                    project_id=arguments["projectId"],
+                    name=arguments["name"],
+                    email=arguments.get("email"),
+                    contact_role=arguments.get("contactRole", "STAKEHOLDER"),
+                    is_primary=arguments.get("isPrimary", False),
+                ))
+
+            case "list_project_allocations":
+                return _ok(api.list_project_allocations(project_id=arguments["projectId"]))
+
+            case "add_project_allocation":
+                return _ok(api.add_project_allocation(
+                    project_id=arguments["projectId"],
+                    team_member_id=arguments["teamMemberId"],
+                    start_date=arguments["startDate"],
+                    end_date=arguments.get("endDate"),
+                    allocation_percentage=arguments.get("allocationPercentage", 100),
+                ))
+
+            case "get_project_config":
+                return _ok(api.get_project_config(project_id=arguments["projectId"]))
+
+            case "update_project_config":
+                return _ok(api.update_project_config(
+                    project_id=arguments["projectId"],
+                    default_sprint_duration_days=arguments.get("defaultSprintDurationDays"),
+                    github_repo=arguments.get("githubRepo"),
+                    github_username=arguments.get("githubUsername"),
+                ))
+
+            case "update_project":
+                return _ok(api.update_project(
+                    project_id=arguments["projectId"],
+                    name=arguments.get("name"),
+                    description=arguments.get("description"),
+                    allocation_start_date=arguments.get("allocationStartDate"),
+                    allocation_end_date=arguments.get("allocationEndDate"),
+                ))
+
             case "delete_project":
                 return _ok(api.delete_project(
                     project_id=arguments["projectId"],
+                ))
+
+            # ── Financial Years ────────────────────────────────────────────────
+            case "list_financial_years":
+                return _ok(api.list_financial_years())
+
+            case "get_current_financial_year":
+                return _ok(api.get_current_financial_year())
+
+            case "create_financial_year":
+                return _ok(api.create_financial_year(
+                    label=arguments["label"],
+                    start_date=arguments["startDate"],
+                    end_date=arguments["endDate"],
+                    org_goal=arguments.get("orgGoal"),
+                    prev_year_feedback=arguments.get("prevYearFeedback"),
+                    is_current=arguments.get("isCurrent", False),
+                ))
+
+            case "update_financial_year":
+                return _ok(api.update_financial_year(
+                    fy_id=arguments["fyId"],
+                    org_goal=arguments.get("orgGoal"),
+                    prev_year_feedback=arguments.get("prevYearFeedback"),
+                    is_current=arguments.get("isCurrent"),
+                ))
+
+            # ── Sprint Tasks ───────────────────────────────────────────────────
+            case "list_sprint_tasks":
+                return _ok(api.list_sprint_tasks(
+                    sprint_id=arguments["sprintId"],
+                ))
+
+            case "create_sprint_task":
+                return _ok(api.create_sprint_task(
+                    sprint_id=arguments["sprintId"],
+                    title=arguments["title"],
+                ))
+
+            case "toggle_sprint_task":
+                return _ok(api.toggle_sprint_task(
+                    sprint_id=arguments["sprintId"],
+                    task_id=arguments["taskId"],
+                    is_done=arguments["isDone"],
+                ))
+
+            case "delete_sprint_task":
+                return _ok(api.delete_sprint_task(
+                    sprint_id=arguments["sprintId"],
+                    task_id=arguments["taskId"],
                 ))
 
             case _:
