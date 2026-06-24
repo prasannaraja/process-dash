@@ -318,6 +318,51 @@ TOOLS = [
     {
         "type": "function",
         "function": {
+            "name": "tag_story",
+            "description": "Set (replace) the tags on a user story, e.g. [\"PSP\",\"TSP\"]. Pass [] to clear all tags.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "storyId": {"type": "string", "description": "UUID of the story"},
+                    "tags": {"type": "array", "items": {"type": "string"}, "description": "New tag list"},
+                },
+                "required": ["storyId", "tags"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "close_sprint",
+            "description": "Mark a sprint as closed. Returns unfinished stories. Always ask the user which to carry forward before calling carry_forward_stories.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "sprintId": {"type": "string", "description": "UUID of the sprint"},
+                },
+                "required": ["sprintId"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "carry_forward_stories",
+            "description": "Copy selected stories from a closed sprint to a target sprint. Originals become CARRIED_OVER.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "sprintId":       {"type": "string"},
+                    "storyIds":       {"type": "array", "items": {"type": "string"}},
+                    "targetSprintId": {"type": "string"},
+                },
+                "required": ["sprintId", "storyIds", "targetSprintId"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "get_todos",
             "description": "Fetch the todo list for a given date.",
             "parameters": {
