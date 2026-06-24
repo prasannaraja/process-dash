@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTheme } from "./hooks/useTheme";
 import { BrowserRouter, Routes, Route, NavLink, useLocation } from "react-router-dom";
 import Today from "./pages/Today";
 import DayView from "./pages/DayView";
@@ -10,6 +11,7 @@ import ProjectConfig from "./pages/ProjectConfig";
 import ProjectsDashboard from "./pages/ProjectsDashboard";
 import ProjectDataView from "./pages/ProjectDataView";
 import Activity from "./pages/Activity";
+import Organisation from "./pages/Organisation";
 import { CopilotBlade } from "./components/CopilotBlade";
 
 // ── Nav items ─────────────────────────────────────────────────────────────────
@@ -39,11 +41,17 @@ const NAV = [
       { to: "/project",            label: "Config",     icon: "⚙" },
     ],
   },
+  {
+    group: "Workspace",
+    items: [
+      { to: "/organisation", label: "Organisation", icon: "◇" },
+    ],
+  },
 ];
 
 // ── Sidebar ───────────────────────────────────────────────────────────────────
 
-function Sidebar({ onCopilot }: { onCopilot: () => void }) {
+function Sidebar({ onCopilot, theme, onToggleTheme }: { onCopilot: () => void; theme: string; onToggleTheme: () => void }) {
   const location = useLocation();
 
   return (
@@ -154,8 +162,32 @@ function Sidebar({ onCopilot }: { onCopilot: () => void }) {
         ))}
       </nav>
 
-      {/* Copilot button */}
-      <div style={{ padding: "8px", borderTop: "1px solid var(--border)" }}>
+      {/* Theme toggle + Copilot button */}
+      <div style={{ padding: "8px", borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 4 }}>
+        <button
+          onClick={onToggleTheme}
+          title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+          style={{
+            display: "flex", alignItems: "center", gap: 8,
+            width: "100%", padding: "7px 10px", borderRadius: 6,
+            fontSize: 12, fontWeight: 500, color: "var(--text-2)",
+            background: "transparent", border: "1px solid var(--border)",
+            cursor: "pointer", fontFamily: "inherit", transition: "background 0.15s, color 0.15s",
+          }}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLElement).style.background = "var(--surface-2)";
+            (e.currentTarget as HTMLElement).style.color = "var(--text)";
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLElement).style.background = "transparent";
+            (e.currentTarget as HTMLElement).style.color = "var(--text-2)";
+          }}
+        >
+          <span style={{ fontSize: 14 }}>{theme === "dark" ? "☀" : "☾"}</span>
+          <span>{theme === "dark" ? "Light mode" : "Dark mode"}</span>
+        </button>
+      </div>
+      <div style={{ padding: "0 8px 8px" }}>
         <button
           onClick={onCopilot}
           style={{
@@ -201,10 +233,10 @@ function Sidebar({ onCopilot }: { onCopilot: () => void }) {
 
 // ── Layout wrapper ────────────────────────────────────────────────────────────
 
-function Layout({ children, onCopilot }: { children: React.ReactNode; onCopilot: () => void }) {
+function Layout({ children, onCopilot, theme, onToggleTheme }: { children: React.ReactNode; onCopilot: () => void; theme: string; onToggleTheme: () => void }) {
   return (
     <div style={{ display: "flex", minHeight: "100vh" }}>
-      <Sidebar onCopilot={onCopilot} />
+      <Sidebar onCopilot={onCopilot} theme={theme} onToggleTheme={onToggleTheme} />
       <main
         style={{
           marginLeft: "var(--sidebar-w)",
@@ -223,6 +255,7 @@ function Layout({ children, onCopilot }: { children: React.ReactNode; onCopilot:
 
 function AppInner() {
   const [bladeOpen, setBladeOpen] = useState(false);
+  const { theme, toggle: toggleTheme } = useTheme();
 
   // ⌘K / Ctrl+K
   useEffect(() => {
@@ -237,7 +270,7 @@ function AppInner() {
   }, []);
 
   return (
-    <Layout onCopilot={() => setBladeOpen(true)}>
+    <Layout onCopilot={() => setBladeOpen(true)} theme={theme} onToggleTheme={toggleTheme}>
       <Routes>
         <Route path="/"                    element={<Today />} />
         <Route path="/todos"               element={<Todos />} />
@@ -249,6 +282,7 @@ function AppInner() {
         <Route path="/projects/dashboard"  element={<ProjectsDashboard />} />
         <Route path="/projects/:id/data"   element={<ProjectDataView />} />
         <Route path="/project"             element={<ProjectConfig />} />
+        <Route path="/organisation"        element={<Organisation />} />
       </Routes>
       <CopilotBlade open={bladeOpen} onClose={() => setBladeOpen(false)} />
     </Layout>

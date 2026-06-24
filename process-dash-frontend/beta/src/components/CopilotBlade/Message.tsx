@@ -70,8 +70,37 @@ function renderInline(text: string): React.ReactNode[] {
   return parts;
 }
 
+// Convert any HTML the LLM slips in into equivalent markdown, then strip remaining tags
+function stripHtml(raw: string): string {
+  return raw
+    // Block-level: convert <br> / <br/> to newline
+    .replace(/<br\s*\/?>/gi, "\n")
+    // Convert <strong>/<b> to **bold**
+    .replace(/<(strong|b)>([\s\S]*?)<\/\1>/gi, "**$2**")
+    // Convert <em>/<i> to *italic*
+    .replace(/<(em|i)>([\s\S]*?)<\/\1>/gi, "*$2*")
+    // Convert <code> to `inline code`
+    .replace(/<code>([\s\S]*?)<\/code>/gi, "`$1`")
+    // Convert <h1>–<h3> to ## headings
+    .replace(/<h1>([\s\S]*?)<\/h1>/gi, "# $1\n")
+    .replace(/<h2>([\s\S]*?)<\/h2>/gi, "## $1\n")
+    .replace(/<h3>([\s\S]*?)<\/h3>/gi, "### $1\n")
+    // Convert <li> to bullet
+    .replace(/<li>([\s\S]*?)<\/li>/gi, "- $1\n")
+    // Strip remaining tags
+    .replace(/<[^>]+>/g, "")
+    // Decode common HTML entities
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    // Collapse 3+ consecutive blank lines to 2
+    .replace(/\n{3,}/g, "\n\n");
+}
+
 function MarkdownContent({ content }: { content: string }) {
-  const lines = content.split("\n");
+  const lines = stripHtml(content).split("\n");
   const nodes: React.ReactNode[] = [];
   let i = 0;
 

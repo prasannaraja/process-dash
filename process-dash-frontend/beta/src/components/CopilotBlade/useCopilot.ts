@@ -1,7 +1,9 @@
 import { useState, useCallback } from "react";
 import { sendMessage, ChatMessage, ToolCall } from "./api";
 
-const SESSION_KEY = "copilot_session_id";
+const SESSION_KEY   = "copilot_session_id";
+const MESSAGES_KEY  = "copilot_messages";
+const MAX_MESSAGES  = 200; // cap to avoid unbounded localStorage growth
 
 function getOrCreateSessionId(): string {
   const stored = localStorage.getItem(SESSION_KEY);
@@ -11,8 +13,30 @@ function getOrCreateSessionId(): string {
   return id;
 }
 
+function loadMessages(): ChatMessage[] {
+  try {
+    const raw = localStorage.getItem(MESSAGES_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as Array<ChatMessage & { timestamp: string }>;
+    // Rehydrate Date objects
+    return parsed.map((m) => ({ ...m, timestamp: new Date(m.timestamp) }));
+  } catch {
+    return [];
+  }
+}
+
+function saveMessages(msgs: ChatMessage[]): void {
+  try {
+    // Keep only the most recent MAX_MESSAGES to avoid filling localStorage
+    const trimmed = msgs.slice(-MAX_MESSAGES);
+    localStorage.setItem(MESSAGES_KEY, JSON.stringify(trimmed));
+  } catch {
+    // Storage full or unavailable — silently skip
+  }
+}
+
 export function useCopilot() {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>(loadMessages);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string>(getOrCreateSessionId);
@@ -28,7 +52,11 @@ export function useCopilot() {
         timestamp: new Date(),
       };
 
-      setMessages((prev) => [...prev, userMsg]);
+      setMessages((prev) => {
+        const next = [...prev, userMsg];
+        saveMessages(next);
+        return next;
+      });
       setIsLoading(true);
       setError(null);
 
@@ -49,7 +77,11 @@ export function useCopilot() {
           toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
           timestamp: new Date(),
         };
-        setMessages((prev) => [...prev, assistantMsg]);
+        setMessages((prev) => {
+          const next = [...prev, assistantMsg];
+          saveMessages(next);
+          return next;
+        });
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unknown error");
       } finally {
@@ -62,6 +94,7 @@ export function useCopilot() {
   const clearSession = useCallback(() => {
     const newId = crypto.randomUUID();
     localStorage.setItem(SESSION_KEY, newId);
+    localStorage.removeItem(MESSAGES_KEY);
     setSessionId(newId);
     setMessages([]);
     setError(null);

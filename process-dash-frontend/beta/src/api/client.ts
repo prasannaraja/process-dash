@@ -149,6 +149,34 @@ export type TeamAllocation = {
     allocationPercentage: number;
 };
 
+export type FinancialYear = {
+    id: string;
+    label: string;
+    startDate: string;
+    endDate: string;
+    orgGoal?: string | null;
+    prevYearFeedback?: string | null;
+    isCurrent: boolean;
+    createdAt?: string | null;
+};
+
+export type FinancialYearListResponse = {
+    items: FinancialYear[];
+};
+
+export type SprintTask = {
+    id: string;
+    sprintId: string;
+    title: string;
+    isDone: boolean;
+    createdAt?: string | null;
+    updatedAt?: string | null;
+};
+
+export type SprintTaskListResponse = {
+    items: SprintTask[];
+};
+
 // --- Client ---
 
 async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
@@ -202,11 +230,11 @@ export const api = {
 
     sprints: {
         list: () => fetchJson<SprintListResponse>("/sprints"),
-        create: (name: string, startDate: string, durationDays: number) =>
+        create: (name: string, startDate: string, durationDays: number, projectId?: string) =>
             fetchJson<SprintDefinition>("/sprints", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name, startDate, durationDays }),
+                body: JSON.stringify({ name, startDate, durationDays, ...(projectId ? { projectId } : {}) }),
             }),
         update: (
             sprintId: string,
@@ -337,6 +365,7 @@ export const api = {
     },
 
     todos: {
+        listAll: () => fetchJson<{ todos: Todo[] }>("/todos"),
         list: (date: string) =>
             fetchJson<{ date: string; todos: Todo[] }>(`/todos/${date}`),
         add: (date: string, text: string) =>
@@ -367,5 +396,40 @@ export const api = {
             if (!res.ok) throw new Error("Export failed");
             return res.blob();
         }
-    }
+    },
+
+    financialYears: {
+        list: () => fetchJson<FinancialYearListResponse>("/financial-years"),
+        getCurrent: () => fetchJson<FinancialYear>("/financial-years/current"),
+        create: (data: { label: string; startDate: string; endDate: string; orgGoal?: string; prevYearFeedback?: string; isCurrent?: boolean }) =>
+            fetchJson<FinancialYear>("/financial-years", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data),
+            }),
+        update: (id: string, data: Partial<{ label: string; startDate: string; endDate: string; orgGoal: string; prevYearFeedback: string; isCurrent: boolean }>) =>
+            fetchJson<FinancialYear>(`/financial-years/${id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data),
+            }),
+    },
+
+    sprintTasks: {
+        list: (sprintId: string) => fetchJson<SprintTaskListResponse>(`/sprints/${sprintId}/tasks`),
+        create: (sprintId: string, title: string) =>
+            fetchJson<SprintTask>(`/sprints/${sprintId}/tasks`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ title }),
+            }),
+        toggle: (sprintId: string, taskId: string, isDone: boolean) =>
+            fetchJson<SprintTask>(`/sprints/${sprintId}/tasks/${taskId}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ isDone }),
+            }),
+        delete: (sprintId: string, taskId: string) =>
+            fetchJson<void>(`/sprints/${sprintId}/tasks/${taskId}`, { method: "DELETE" }),
+    },
 };

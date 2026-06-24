@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { api, type SprintDefinition, type SprintRollup, type WeeklySummaryRequest } from "../api/client";
+import { api, type SprintDefinition, type SprintRollup, type WeeklySummaryRequest, type ProjectDefinition, type SprintTask } from "../api/client";
 import {
     Badge,
     Button,
@@ -36,14 +36,32 @@ export default function WeekView() {
     const [selectedFrag, setSelectedFrag] = useState<string[]>([]);
     const [saved, setSaved] = useState(false);
 
+    // Sprint tasks
+    const [tasks, setTasks] = useState<SprintTask[]>([]);
+    const [newTask, setNewTask] = useState("");
+
+    // Create Sprint
+    const [showCreate, setShowCreate] = useState(false);
+    const [newName, setNewName] = useState("");
+    const [newStartDate, setNewStartDate] = useState(getTodayIsoDate());
+    const [newDuration, setNewDuration] = useState(14);
+    const [newProjectId, setNewProjectId] = useState("");
+    const [projects, setProjects] = useState<ProjectDefinition[]>([]);
+    const [creating, setCreating] = useState(false);
+    const [createError, setCreateError] = useState("");
+
     const fetchSprint = async (sprintId: string) => {
         if (!sprintId) return;
         setLoading(true);
         setError("");
         setSaved(false);
         try {
-            const res = await api.sprints.getRollup(sprintId);
+            const [res, tasksRes] = await Promise.all([
+                api.sprints.getRollup(sprintId),
+                api.sprintTasks.list(sprintId).catch(() => ({ items: [] })),
+            ]);
             setData(res);
+            setTasks(tasksRes.items || []);
             setNotPerfIssues((res.reflection?.notPerformanceIssues || []).join("\n"));
             setOneChange(res.reflection?.oneChangeNextWeek || "");
             setSelectedFrag(res.reflection?.topFragmenters || []);
@@ -59,9 +77,15 @@ export default function WeekView() {
             setLoading(true);
             setError("");
             try {
-                const res = await api.sprints.list();
-                const items = res.items || [];
+                const [sprintRes, projRes] = await Promise.all([
+                    api.sprints.list(),
+                    api.projects.list(),
+                ]);
+                const items = sprintRes.items || [];
                 setSprints(items);
+                const projItems = projRes.items || [];
+                setProjects(projItems);
+                if (projItems.length > 0) setNewProjectId(projItems[0].id);
                 if (items.length > 0) {
                     const today = getTodayIsoDate();
                     const current = items.find((s) => s.startDate <= today && s.endDate >= today);
@@ -101,6 +125,48 @@ export default function WeekView() {
         }
     };
 
+    const handleAddTask = async () => {
+        if (!newTask.trim() || !selectedSprintId) return;
+        try {
+            const t = await api.sprintTasks.create(selectedSprintId, newTask.trim());
+            setTasks(prev => [...prev, t]);
+            setNewTask("");
+        } catch {}
+    };
+
+    const handleToggleTask = async (task: SprintTask) => {
+        try {
+            const updated = await api.sprintTasks.toggle(selectedSprintId, task.id, !task.isDone);
+            setTasks(prev => prev.map(t => t.id === updated.id ? updated : t));
+        } catch {}
+    };
+
+    const handleDeleteTask = async (taskId: string) => {
+        try {
+            await api.sprintTasks.delete(selectedSprintId, taskId);
+            setTasks(prev => prev.filter(t => t.id !== taskId));
+        } catch {}
+    };
+
+    const handleCreateSprint = async () => {
+        if (!newName.trim()) { setCreateError("Sprint name is required"); return; }
+        setCreating(true);
+        setCreateError("");
+        try {
+            const created = await api.sprints.create(newName.trim(), newStartDate, newDuration, newProjectId || undefined);
+            setSprints((prev) => [created, ...prev]);
+            setSelectedSprintId(created.id);
+            setShowCreate(false);
+            setNewName("");
+            setNewStartDate(getTodayIsoDate());
+            setNewDuration(14);
+        } catch (e: any) {
+            setCreateError(e.message || "Failed to create sprint");
+        } finally {
+            setCreating(false);
+        }
+    };
+
     if (loading && !data) return <Loading text="Loading sprint report…" />;
 
     return (
@@ -108,29 +174,98 @@ export default function WeekView() {
             <PageHeader
                 title="Sprint Report"
                 right={
-                    <select
-                        value={selectedSprintId}
-                        onChange={(e) => setSelectedSprintId(e.target.value)}
-                        style={{
-                            background: "var(--surface-2)",
-                            border: "1px solid var(--border)",
-                            color: "var(--text)",
-                            borderRadius: 6,
-                            padding: "6px 10px",
-                            fontSize: 13,
-                            fontFamily: "inherit",
-                            minWidth: 260,
-                        }}
-                    >
-                        {sprints.length === 0 && <option value="">No sprints</option>}
-                        {sprints.map((s) => (
-                            <option key={s.id} value={s.id}>
-                                {s.name} ({s.startDate} to {s.endDate})
-                            </option>
-                        ))}
-                    </select>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <select
+                            value={selectedSprintId}
+                            onChange={(e) => setSelectedSprintId(e.target.value)}
+                            style={{
+                                background: "var(--surface-2)",
+                                border: "1px solid var(--border)",
+                                color: "var(--text)",
+                                borderRadius: 6,
+                                padding: "6px 10px",
+                                fontSize: 13,
+                                fontFamily: "inherit",
+                                minWidth: 260,
+                            }}
+                        >
+                            {sprints.length === 0 && <option value="">No sprints</option>}
+                            {sprints.map((s) => (
+                                <option key={s.id} value={s.id}>
+                                    {s.name} ({s.startDate} → {s.endDate})
+                                </option>
+                            ))}
+                        </select>
+                        <Button variant="primary" onClick={() => { setShowCreate((v) => !v); setCreateError(""); }}>
+                            {showCreate ? "Cancel" : "+ New Sprint"}
+                        </Button>
+                    </div>
                 }
             />
+
+            {/* ── Inline Create Sprint form ── */}
+            {showCreate && (
+                <Card style={{ padding: 20, marginBottom: 24 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 14 }}>
+                        New Sprint
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
+                        <Input
+                            label="Sprint name"
+                            placeholder="Sprint 81"
+                            value={newName}
+                            onChange={(e) => setNewName(e.target.value)}
+                        />
+                        <Input
+                            label="Start date"
+                            type="date"
+                            value={newStartDate}
+                            onChange={(e) => setNewStartDate(e.target.value)}
+                        />
+                        <div>
+                            <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 4 }}>Duration (days)</div>
+                            <select
+                                value={newDuration}
+                                onChange={(e) => setNewDuration(Number(e.target.value))}
+                                style={{
+                                    width: "100%", background: "var(--surface-2)", border: "1px solid var(--border)",
+                                    color: "var(--text)", borderRadius: 6, padding: "6px 10px",
+                                    fontSize: 13, fontFamily: "inherit",
+                                }}
+                            >
+                                <option value={7}>7 days (1 week)</option>
+                                <option value={14}>14 days (2 weeks)</option>
+                                <option value={21}>21 days (3 weeks)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 4 }}>Project</div>
+                            <select
+                                value={newProjectId}
+                                onChange={(e) => setNewProjectId(e.target.value)}
+                                style={{
+                                    width: "100%", background: "var(--surface-2)", border: "1px solid var(--border)",
+                                    color: "var(--text)", borderRadius: 6, padding: "6px 10px",
+                                    fontSize: 13, fontFamily: "inherit",
+                                }}
+                            >
+                                {projects.map((p) => (
+                                    <option key={p.id} value={p.id}>{p.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+                    {createError && (
+                        <div style={{ fontSize: 12, color: "var(--red)", marginBottom: 10 }}>{createError}</div>
+                    )}
+                    <div style={{ display: "flex", gap: 8 }}>
+                        <Button variant="primary" onClick={handleCreateSprint} disabled={creating}>
+                            {creating ? "Creating…" : "Create Sprint"}
+                        </Button>
+                        <Button variant="ghost" onClick={() => setShowCreate(false)}>Cancel</Button>
+                    </div>
+                </Card>
+            )}
 
             {error && (
                 <div
@@ -253,6 +388,41 @@ export default function WeekView() {
                                 </table>
                             </div>
                         )}
+                    </Section>
+
+                    {/* Sprint Tasks */}
+                    <Section title="Sprint Tasks">
+                        <Card style={{ padding: 16 }}>
+                            <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                                <input
+                                    value={newTask}
+                                    onChange={e => setNewTask(e.target.value)}
+                                    onKeyDown={e => e.key === "Enter" && handleAddTask()}
+                                    placeholder="Add a task… (Enter)"
+                                    style={{ flex: 1, background: "var(--surface-3)", border: "1px solid var(--border)", color: "var(--text)", borderRadius: 6, padding: "7px 10px", fontSize: 13, fontFamily: "inherit" }}
+                                />
+                                <Button variant="secondary" onClick={handleAddTask} disabled={!newTask.trim()}>Add</Button>
+                            </div>
+                            {tasks.length === 0 ? (
+                                <div style={{ fontSize: 12, color: "var(--text-3)", textAlign: "center", padding: "12px 0" }}>No tasks yet — add admin, ops, or non-story work here.</div>
+                            ) : (
+                                <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                                    {tasks.map(t => (
+                                        <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 4px", borderRadius: 5, transition: "background 0.1s" }}
+                                            onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = "var(--surface-3)"}
+                                            onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = "transparent"}>
+                                            <input type="checkbox" checked={t.isDone} onChange={() => handleToggleTask(t)}
+                                                style={{ width: 15, height: 15, accentColor: "var(--accent)", cursor: "pointer", flexShrink: 0 }} />
+                                            <span style={{ flex: 1, fontSize: 13, color: t.isDone ? "var(--text-3)" : "var(--text)", textDecoration: t.isDone ? "line-through" : "none" }}>{t.title}</span>
+                                            <button onClick={() => handleDeleteTask(t.id)} style={{ background: "transparent", border: "none", color: "var(--text-3)", cursor: "pointer", fontSize: 13, opacity: 0.6, padding: "0 4px" }}>✕</button>
+                                        </div>
+                                    ))}
+                                    <div style={{ marginTop: 8, fontSize: 11, color: "var(--text-3)" }}>
+                                        {tasks.filter(t => t.isDone).length}/{tasks.length} done
+                                    </div>
+                                </div>
+                            )}
+                        </Card>
                     </Section>
 
                     {/* Reflection Form */}
