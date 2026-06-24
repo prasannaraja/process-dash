@@ -15,6 +15,16 @@ export type Block = {
     interrupted: boolean;
     reasonCode?: string;
     date: string;
+    startedAt?: string;
+};
+
+export type RecoveryBlock = {
+    blockId: string;
+    kind: string;
+    date: string;
+    startedAt?: string;
+    durationMinutes?: number;
+    durationLabel?: string;
 };
 
 export type DayMetrics = {
@@ -40,6 +50,7 @@ export type DayRollup = {
     date: string;
     intents: string[];
     blocks: Block[];
+    recoveryBlocks?: RecoveryBlock[];
     metrics: DayMetrics;
     todos: Todo[];
 };

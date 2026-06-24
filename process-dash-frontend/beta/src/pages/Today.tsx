@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { api, type DayRollup, type ProjectDefinition, type Todo } from "../api/client";
+import { api, type DayRollup, type ProjectDefinition, type Todo, type RecoveryBlock } from "../api/client";
 import { useDataRefresh } from "../hooks/useDataRefresh";
 import {
     Badge,
@@ -726,6 +726,21 @@ export default function Today() {
 
             {/* Today's Log Table */}
             <Section title="Today's Log">
+                {(() => {
+                    type LogEntry =
+                        | { _type: "work"; blockId: string; startedAt?: string; intent: string; actualOutcome?: string; durationLabel?: string; durationMinutes?: number; interrupted: boolean; reasonCode?: string }
+                        | { _type: "recovery"; blockId: string; startedAt?: string; kind: string; durationLabel?: string };
+
+                    const workEntries: LogEntry[] = data.blocks.map(b => ({ _type: "work" as const, ...b }));
+                    const recoveryEntries: LogEntry[] = (data.recoveryBlocks ?? []).map((b: RecoveryBlock) => ({ _type: "recovery" as const, ...b }));
+
+                    const merged = [...workEntries, ...recoveryEntries].sort((a, b) => {
+                        const ta = a.startedAt ?? "";
+                        const tb = b.startedAt ?? "";
+                        return tb.localeCompare(ta); // descending — most recent first
+                    });
+
+                    return (
                 <div
                     style={{
                         border: "1px solid var(--border)",
@@ -760,88 +775,44 @@ export default function Today() {
                             </tr>
                         </thead>
                         <tbody>
-                            {data.blocks.map((b) => (
-                                <tr
-                                    key={b.blockId}
-                                    style={{ borderBottom: "1px solid var(--border)" }}
-                                    onMouseEnter={(e) =>
-                                        (e.currentTarget.style.background = "var(--surface-2)")
-                                    }
-                                    onMouseLeave={(e) =>
-                                        (e.currentTarget.style.background = "transparent")
-                                    }
-                                >
-                                    <td
-                                        style={{
-                                            padding: "10px 14px",
-                                            fontWeight: 500,
-                                            color: "var(--text)",
-                                        }}
+                            {merged.map((entry) =>
+                                entry._type === "work" ? (
+                                    <tr
+                                        key={entry.blockId}
+                                        style={{ borderBottom: "1px solid var(--border)" }}
+                                        onMouseEnter={(e) => (e.currentTarget.style.background = "var(--surface-2)")}
+                                        onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
                                     >
-                                        {b.intent}
-                                    </td>
-                                    <td style={{ padding: "10px 14px", color: "var(--text-2)" }}>
-                                        {b.actualOutcome || "-"}
-                                    </td>
-                                    <td
-                                        className="mono"
-                                        style={{ padding: "10px 14px", color: "var(--text-2)" }}
+                                        <td style={{ padding: "10px 14px", fontWeight: 500, color: "var(--text)" }}>{entry.intent}</td>
+                                        <td style={{ padding: "10px 14px", color: "var(--text-2)" }}>{entry.actualOutcome || "-"}</td>
+                                        <td className="mono" style={{ padding: "10px 14px", color: "var(--text-2)" }}>{entry.durationLabel || "-"}</td>
+                                        <td style={{ padding: "10px 14px" }}>
+                                            {entry.interrupted ? (
+                                                <Badge variant="red">{entry.reasonCode}</Badge>
+                                            ) : entry.durationMinutes ? (
+                                                <Badge variant="green">Done</Badge>
+                                            ) : (
+                                                <Badge variant="accent">Active</Badge>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    <tr
+                                        key={entry.blockId}
+                                        style={{ borderBottom: "1px solid var(--border)", background: "rgba(251,191,36,0.04)" }}
+                                        onMouseEnter={(e) => (e.currentTarget.style.background = "var(--surface-2)")}
+                                        onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(251,191,36,0.04)")}
                                     >
-                                        {b.durationLabel || "-"}
-                                    </td>
-                                    <td style={{ padding: "10px 14px" }}>
-                                        {b.interrupted ? (
-                                            <Badge variant="red">{b.reasonCode}</Badge>
-                                        ) : b.durationMinutes ? (
-                                            <Badge variant="green">Done</Badge>
-                                        ) : (
-                                            <Badge variant="accent">Active</Badge>
-                                        )}
-                                    </td>
-                                </tr>
-                            ))}
-                            {(data as any).recoveryBlocks?.map((b: any) => (
-                                <tr
-                                    key={b.blockId}
-                                    style={{
-                                        borderBottom: "1px solid var(--border)",
-                                        background: "rgba(251,191,36,0.04)",
-                                    }}
-                                    onMouseEnter={(e) =>
-                                        (e.currentTarget.style.background = "var(--surface-2)")
-                                    }
-                                    onMouseLeave={(e) =>
-                                        (e.currentTarget.style.background = "rgba(251,191,36,0.04)")
-                                    }
-                                >
-                                    <td
-                                        style={{
-                                            padding: "10px 14px",
-                                            fontWeight: 500,
-                                            color: "var(--yellow)",
-                                        }}
-                                    >
-                                        {b.kind === "COFFEE" ? "Coffee Break" : "Lunch Break"}
-                                    </td>
-                                    <td style={{ padding: "10px 14px", color: "var(--text-3)", fontStyle: "italic" }}>
-                                        Recovery
-                                    </td>
-                                    <td
-                                        className="mono"
-                                        style={{
-                                            padding: "10px 14px",
-                                            color: "var(--yellow)",
-                                            fontWeight: 500,
-                                        }}
-                                    >
-                                        {b.durationLabel || "-"}
-                                    </td>
-                                    <td style={{ padding: "10px 14px" }}>
-                                        <Badge variant="yellow">Rest</Badge>
-                                    </td>
-                                </tr>
-                            ))}
-                            {data.blocks.length === 0 && !(data as any).recoveryBlocks?.length && (
+                                        <td style={{ padding: "10px 14px", fontWeight: 500, color: "var(--yellow)" }}>
+                                            {entry.kind === "COFFEE" ? "Coffee Break" : "Lunch Break"}
+                                        </td>
+                                        <td style={{ padding: "10px 14px", color: "var(--text-3)", fontStyle: "italic" }}>Recovery</td>
+                                        <td className="mono" style={{ padding: "10px 14px", color: "var(--yellow)", fontWeight: 500 }}>{entry.durationLabel || "-"}</td>
+                                        <td style={{ padding: "10px 14px" }}><Badge variant="yellow">Rest</Badge></td>
+                                    </tr>
+                                )
+                            )}
+                            {merged.length === 0 && (
                                 <tr>
                                     <td colSpan={4}>
                                         <EmptyState
@@ -855,6 +826,8 @@ export default function Today() {
                         </tbody>
                     </table>
                 </div>
+                    );
+                })()}
             </Section>
         </div>
     );

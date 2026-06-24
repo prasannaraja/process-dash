@@ -55,19 +55,21 @@ def get_day_rollup(session: Session, date_str: str) -> Dict[str, Any]:
                     "intent": p.get("intent"),
                     "notes": p.get("notes"),
                     "date": p.get("date"),
+                    "startedAt": evt.ts.isoformat() if evt.ts else None,
                     "interrupted": False,
                     "reasonCode": None,
                     "actualOutcome": None,
                     "durationMinutes": None,
                     "durationLabel": "" # Guaranteed string
                 }
-        
+
         if evt.type == "recovery_block_started":
             if p.get("date") == date_str:
                 recovery_map[block_id] = {
                     "blockId": block_id,
                     "kind": p.get("kind"),
                     "date": p.get("date"),
+                    "startedAt": evt.ts.isoformat() if evt.ts else None,
                     "durationMinutes": None,
                     "durationLabel": ""
                 }
