@@ -103,6 +103,25 @@ export type SprintDefinition = {
     endDate: string;
     durationDays: number;
     isArchived: boolean;
+    isClosed: boolean;
+};
+
+export type UserStory = {
+    id: string;
+    sprintId: string;
+    projectId?: string | null;
+    title: string;
+    description?: string | null;
+    acceptanceCriteria?: string | null;
+    storyPoints?: number | null;
+    status: "TODO" | "IN_PROGRESS" | "DONE" | "CARRIED_OVER";
+    tags: string[];
+    createdAt?: string | null;
+    updatedAt?: string | null;
+};
+
+export type UserStoryListResponse = {
+    items: UserStory[];
 };
 
 export type SprintListResponse = {
@@ -261,6 +280,20 @@ export const api = {
                 body: JSON.stringify(data),
             }),
         getSummaries: () => fetchJson<SprintSummaryListResponse>("/sprints/summaries"),
+        close: (sprintId: string) =>
+            fetchJson<{ ok: boolean; sprintId: string; unfinishedStories: UserStory[] }>(
+                `/sprints/${sprintId}/close`,
+                { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }
+            ),
+        carryForward: (sprintId: string, storyIds: string[], targetSprintId: string) =>
+            fetchJson<{ ok: boolean; movedStories: UserStory[]; count: number }>(
+                `/sprints/${sprintId}/carry-forward`,
+                {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ storyIds, targetSprintId }),
+                }
+            ),
     },
 
     projects: {
@@ -413,6 +446,53 @@ export const api = {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(data),
             }),
+    },
+
+    stories: {
+        list: (params?: { sprintId?: string; projectId?: string; status?: string; tag?: string }) => {
+            const qs = new URLSearchParams();
+            if (params?.sprintId) qs.set("sprintId", params.sprintId);
+            if (params?.projectId) qs.set("projectId", params.projectId);
+            if (params?.status) qs.set("status", params.status);
+            if (params?.tag) qs.set("tag", params.tag);
+            const q = qs.toString();
+            return fetchJson<UserStoryListResponse>(`/stories${q ? `?${q}` : ""}`);
+        },
+        create: (data: {
+            sprintId: string;
+            projectId?: string;
+            title: string;
+            description?: string;
+            acceptanceCriteria?: string;
+            storyPoints?: number;
+            tags?: string[];
+        }) =>
+            fetchJson<UserStory>("/stories", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data),
+            }),
+        update: (storyId: string, data: {
+            title?: string;
+            description?: string;
+            acceptanceCriteria?: string;
+            storyPoints?: number;
+            status?: string;
+            tags?: string[];
+        }) =>
+            fetchJson<UserStory>(`/stories/${storyId}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data),
+            }),
+        updateStatus: (storyId: string, status: string) =>
+            fetchJson<UserStory>(`/stories/${storyId}/status`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ status }),
+            }),
+        delete: (storyId: string) =>
+            fetchJson<{ ok: boolean }>(`/stories/${storyId}`, { method: "DELETE" }),
     },
 
     sprintTasks: {
