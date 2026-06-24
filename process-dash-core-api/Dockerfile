@@ -10,7 +10,8 @@ COPY ./migrations /code/migrations
 COPY ./alembic.ini /code/alembic.ini
 COPY ./migrate.py /code/migrate.py
 COPY ./start.sh /code/start.sh
-RUN chmod +x /code/start.sh
+# Strip Windows CRLF line endings in case the file was edited on Windows
+RUN sed -i 's/\r//' /code/start.sh && chmod +x /code/start.sh
 
 EXPOSE 8000
 
