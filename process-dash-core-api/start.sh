@@ -1,5 +1,4 @@
 #!/bin/sh
-set -e
 
 # Always run from the code directory so alembic.ini and migrations/ are resolvable
 cd /code
@@ -17,6 +16,11 @@ fi
 
 echo "[startup] Running migrations..."
 python /code/migrate.py
+MIGRATE_EXIT=$?
+if [ $MIGRATE_EXIT -ne 0 ]; then
+  echo "[startup] ERROR: migration failed (exit $MIGRATE_EXIT)"
+  exit $MIGRATE_EXIT
+fi
 echo "[startup] Migrations complete."
 
 echo "[startup] Starting API server on port 8000..."
