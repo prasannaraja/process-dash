@@ -225,6 +225,49 @@ TOOLS = [
     {
         "type": "function",
         "function": {
+            "name": "update_sprint",
+            "description": "Rename a sprint or change its start date / duration. If it already has summaries, set forceRecalculate=true to confirm.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "sprintId":         {"type": "string", "description": "UUID of the sprint"},
+                    "name":             {"type": "string", "description": "New name (optional)"},
+                    "startDate":        {"type": "string", "description": "New start date YYYY-MM-DD (optional)"},
+                    "durationDays":     {"type": "integer", "description": "New duration in days (optional)"},
+                    "forceRecalculate": {"type": "boolean", "description": "Confirm recalculation when summaries exist"},
+                },
+                "required": ["sprintId"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_sprint_summaries",
+            "description": "List saved sprint reflection summaries for all sprints.",
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "save_sprint_summary",
+            "description": "Save the weekly reflection for a sprint.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "sprintId":             {"type": "string"},
+                    "topFragmenters":       {"type": "array", "items": {"type": "string"}},
+                    "notPerformanceIssues": {"type": "array", "items": {"type": "string"}},
+                    "oneChangeNextWeek":    {"type": "string"},
+                },
+                "required": ["sprintId", "topFragmenters", "notPerformanceIssues", "oneChangeNextWeek"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "update_story_status",
             "description": "Change the status of a user story (TODO→IN_PROGRESS→DONE or CARRIED_OVER).",
             "parameters": {
@@ -237,6 +280,38 @@ TOOLS = [
                     },
                 },
                 "required": ["storyId", "status"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "update_story",
+            "description": "Edit a user story's title, description, story points, or status.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "storyId":     {"type": "string", "description": "UUID of the story"},
+                    "title":       {"type": "string"},
+                    "description": {"type": "string"},
+                    "storyPoints": {"type": "integer"},
+                    "status":      {"type": "string", "enum": ["TODO", "IN_PROGRESS", "DONE", "BLOCKED"]},
+                },
+                "required": ["storyId"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "delete_story",
+            "description": "Delete a user story. Confirm with the user first.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "storyId": {"type": "string", "description": "UUID of the story"},
+                },
+                "required": ["storyId"],
             },
         },
     },
@@ -287,6 +362,35 @@ TOOLS = [
     {
         "type": "function",
         "function": {
+            "name": "uncomplete_todo",
+            "description": "Mark a completed todo as not done.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "todoId":         {"type": "string"},
+                    "completionDate": {"type": "string", "description": "YYYY-MM-DD"},
+                },
+                "required": ["todoId", "completionDate"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "delete_todo",
+            "description": "Permanently delete a todo item.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "todoId": {"type": "string"},
+                },
+                "required": ["todoId"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "list_projects",
             "description": "List all active projects (name and UUID).",
             "parameters": {
@@ -316,6 +420,186 @@ TOOLS = [
     {
         "type": "function",
         "function": {
+            "name": "get_projects_dashboard",
+            "description": "Get a summary dashboard of all projects — overall health and activity.",
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_project_report",
+            "description": "Get detailed activity data for a specific project.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "projectId": {"type": "string"},
+                },
+                "required": ["projectId"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_project_members",
+            "description": "List all team members on a project.",
+            "parameters": {
+                "type": "object",
+                "properties": {"projectId": {"type": "string"}},
+                "required": ["projectId"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "add_project_member",
+            "description": "Add a team member to a project.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "projectId": {"type": "string"},
+                    "name":      {"type": "string"},
+                    "email":     {"type": "string"},
+                    "role":      {"type": "string", "enum": ["LEAD", "CONTRIBUTOR", "OBSERVER"]},
+                },
+                "required": ["projectId", "name"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "update_project_member",
+            "description": "Update a team member's name, email, role, or active status.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "projectId": {"type": "string"},
+                    "memberId":  {"type": "string"},
+                    "name":      {"type": "string"},
+                    "email":     {"type": "string"},
+                    "role":      {"type": "string", "enum": ["LEAD", "CONTRIBUTOR", "OBSERVER"]},
+                    "isActive":  {"type": "boolean"},
+                },
+                "required": ["projectId", "memberId"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_project_contacts",
+            "description": "List stakeholder contacts for a project.",
+            "parameters": {
+                "type": "object",
+                "properties": {"projectId": {"type": "string"}},
+                "required": ["projectId"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "add_project_contact",
+            "description": "Add a stakeholder contact to a project.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "projectId":   {"type": "string"},
+                    "name":        {"type": "string"},
+                    "email":       {"type": "string"},
+                    "contactRole": {"type": "string", "enum": ["STAKEHOLDER", "MANAGER", "TECH_LEAD"]},
+                    "isPrimary":   {"type": "boolean"},
+                },
+                "required": ["projectId", "name"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_project_allocations",
+            "description": "List time allocations for team members on a project.",
+            "parameters": {
+                "type": "object",
+                "properties": {"projectId": {"type": "string"}},
+                "required": ["projectId"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "add_project_allocation",
+            "description": "Record a team member's time allocation on a project. Call list_project_members first to get the teamMemberId.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "projectId":            {"type": "string"},
+                    "teamMemberId":         {"type": "string"},
+                    "startDate":            {"type": "string", "description": "YYYY-MM-DD"},
+                    "endDate":              {"type": "string", "description": "YYYY-MM-DD (optional)"},
+                    "allocationPercentage": {"type": "integer", "description": "1-100"},
+                },
+                "required": ["projectId", "teamMemberId", "startDate"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_project_config",
+            "description": "Get a project's config — default sprint duration and GitHub settings.",
+            "parameters": {
+                "type": "object",
+                "properties": {"projectId": {"type": "string"}},
+                "required": ["projectId"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "update_project_config",
+            "description": "Update a project's default sprint duration or GitHub repo/username.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "projectId":                 {"type": "string"},
+                    "defaultSprintDurationDays": {"type": "integer"},
+                    "githubRepo":                {"type": "string", "description": "owner/repo format"},
+                    "githubUsername":            {"type": "string"},
+                },
+                "required": ["projectId"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "update_project",
+            "description": (
+                "Update an existing project — rename it, change its description, or set its allocation start/end dates. "
+                "Call list_projects first to resolve the project name to an ID."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "projectId":           {"type": "string", "description": "UUID of the project"},
+                    "name":                {"type": "string", "description": "New name (optional)"},
+                    "description":         {"type": "string", "description": "New description (optional)"},
+                    "allocationStartDate": {"type": "string", "description": "Allocation start date YYYY-MM-DD (optional)"},
+                    "allocationEndDate":   {"type": "string", "description": "Allocation end date YYYY-MM-DD (optional)"},
+                },
+                "required": ["projectId"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "delete_project",
             "description": (
                 "Permanently delete a project by ID. "
@@ -328,6 +612,122 @@ TOOLS = [
                     "projectId": {"type": "string", "description": "UUID of the project to delete"},
                 },
                 "required": ["projectId"],
+            },
+        },
+    },
+
+    # ── Financial Years ────────────────────────────────────────────────────────
+    {
+        "type": "function",
+        "function": {
+            "name": "list_financial_years",
+            "description": "List all financial years in the organisation, including labels, dates, org goals, and which is current.",
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_current_financial_year",
+            "description": "Get the currently active financial year with its org goal and previous year feedback.",
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "create_financial_year",
+            "description": "Create a new financial year for the organisation.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "label":            {"type": "string", "description": "Label e.g. 'FY 2025-26'"},
+                    "startDate":        {"type": "string", "description": "Start date YYYY-MM-DD"},
+                    "endDate":          {"type": "string", "description": "End date YYYY-MM-DD"},
+                    "orgGoal":          {"type": "string", "description": "Organisation goal for this year (optional)"},
+                    "prevYearFeedback": {"type": "string", "description": "Lessons learned from previous year (optional)"},
+                    "isCurrent":        {"type": "boolean", "description": "Make this the active financial year"},
+                },
+                "required": ["label", "startDate", "endDate"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "update_financial_year",
+            "description": "Update an existing financial year's org goal, feedback, or mark it as current.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "fyId":             {"type": "string", "description": "UUID of the financial year"},
+                    "orgGoal":          {"type": "string", "description": "New org goal text"},
+                    "prevYearFeedback": {"type": "string", "description": "Updated previous year feedback"},
+                    "isCurrent":        {"type": "boolean", "description": "Set true to make this the active FY"},
+                },
+                "required": ["fyId"],
+            },
+        },
+    },
+
+    # ── Sprint Tasks ───────────────────────────────────────────────────────────
+    {
+        "type": "function",
+        "function": {
+            "name": "list_sprint_tasks",
+            "description": "List all checklist tasks for a sprint (non-story work like admin, ops, meetings).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "sprintId": {"type": "string", "description": "UUID of the sprint"},
+                },
+                "required": ["sprintId"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "create_sprint_task",
+            "description": "Add a checklist task to a sprint.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "sprintId": {"type": "string", "description": "UUID of the sprint"},
+                    "title":    {"type": "string", "description": "Task title"},
+                },
+                "required": ["sprintId", "title"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "toggle_sprint_task",
+            "description": "Mark a sprint task as done or reopen it.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "sprintId": {"type": "string", "description": "UUID of the sprint"},
+                    "taskId":   {"type": "string", "description": "UUID of the task"},
+                    "isDone":   {"type": "boolean", "description": "True to mark done, false to reopen"},
+                },
+                "required": ["sprintId", "taskId", "isDone"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "delete_sprint_task",
+            "description": "Delete a sprint task permanently.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "sprintId": {"type": "string", "description": "UUID of the sprint"},
+                    "taskId":   {"type": "string", "description": "UUID of the task to delete"},
+                },
+                "required": ["sprintId", "taskId"],
             },
         },
     },

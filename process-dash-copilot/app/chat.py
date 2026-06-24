@@ -7,7 +7,6 @@ LLM tool-calling loop (call LLM → execute tools → continue → return reply)
 
 import json
 import os
-from typing import Any
 
 from dotenv import load_dotenv
 load_dotenv()  # loads process-dash-copilot/.env when running outside Docker
@@ -47,24 +46,6 @@ def _llm_client() -> OpenAI:
 
 
 # ── Tool execution ─────────────────────────────────────────────────────────────
-
-def _execute_tool_calls(tool_calls: list[Any]) -> list[dict]:
-    """Run each tool call and return tool-result messages."""
-    results = []
-    for tc in tool_calls:
-        fn_name = tc.function.name
-        try:
-            args = json.loads(tc.function.arguments)
-        except json.JSONDecodeError:
-            args = {}
-
-        result_text = call_tool(fn_name, args)
-        results.append({
-            "role": "tool",
-            "tool_call_id": tc.id,
-            "content": result_text,
-        })
-    return results
 
 
 # ── Chat loop ─────────────────────────────────────────────────────────────────
@@ -107,7 +88,8 @@ def chat(session_id: str, user_message: str) -> dict:
                 "sessionId": session_id,
             }
 
-        # Execute tool calls and continue the loop
+        # Execute tool calls once — build both the log and the LLM tool-result messages
+        tool_results = []
         for tc in msg.tool_calls:
             args = {}
             try:
@@ -120,8 +102,11 @@ def chat(session_id: str, user_message: str) -> dict:
                 "args": args,
                 "result": result,
             })
-
-        tool_results = _execute_tool_calls(msg.tool_calls)
+            tool_results.append({
+                "role": "tool",
+                "tool_call_id": tc.id,
+                "content": result,
+            })
         messages.extend(tool_results)
 
     # Exceeded max rounds — ask the LLM to wrap up without more tools
